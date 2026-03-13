@@ -16,6 +16,26 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## MongoDB Atlas setup
+
+Create a `.env.local` file in the project root with:
+
+```bash
+MONGODB_URI=your_mongodb_atlas_connection_string
+MONGODB_DB=your_database_name
+MONGODB_COLLECTION=earthquakes
+```
+
+`MONGODB_COLLECTION` is optional (defaults to `earthquakes`).
+
+The API route `GET /api/earthquakes` reads documents from this collection and converts them to GeoJSON points for the cluster map.
+Supported coordinate fields in each document:
+
+- `geometry.coordinates: [lng, lat]`
+- `location.coordinates: [lng, lat]`
+- `coordinates: [lng, lat]`
+- `longitude` + `latitude`
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
