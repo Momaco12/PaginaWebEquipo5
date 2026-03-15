@@ -937,7 +937,7 @@ function MapPopup({
   closeButton = false,
   ...popupOptions
 }: MapPopupProps) {
-  const { map } = useMap();
+  const { map, isLoaded } = useMap();
   const popupOptionsRef = useRef(popupOptions);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -957,14 +957,18 @@ function MapPopup({
   }, []);
 
   useEffect(() => {
-    if (!map) return;
+    if (!map || !isLoaded) return;
 
     const onCloseProp = () => onCloseRef.current?.();
 
     popup.on("close", onCloseProp);
-
     popup.setDOMContent(container);
-    popup.addTo(map);
+
+    // Ensure the popup is attached and positioned correctly once the map is ready
+    if (!popup.isOpen()) {
+      popup.addTo(map);
+    }
+    popup.setLngLat([longitude, latitude]);
 
     return () => {
       popup.off("close", onCloseProp);
@@ -972,8 +976,7 @@ function MapPopup({
         popup.remove();
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map]);
+  }, [map, isLoaded, longitude, latitude, container, popup]);
 
   if (popup.isOpen()) {
     const prev = popupOptionsRef.current;
