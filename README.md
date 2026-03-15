@@ -4,41 +4,28 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 First, run the development server:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## SQLServer
+
+### Iniciar la instancia de SQL Server en Docker
+
+Para iniciar una instancia de **SQL Server** en un contenedor Docker, ejecuta el siguiente comando en la terminal de tu **GitHub Codespace**:
+
+```sh
+docker run -e 'ACCEPT_EULA=Y' -e 'SA_PASSWORD=YourPassword123!' \
+   -p 1433:1433 --name sqlserver -d mcr.microsoft.com/mssql/server:2022-latest
+```
+
+### Instalar sqlcmd (IMPORTANTE: copiar linea por linea)
+```sh
+curl https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc
+curl https://packages.microsoft.com/config/ubuntu/20.04/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
+sudo apt update
+sudo apt install mssql-tools unixodbc-dev
+echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
+source ~/.bashrc
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-## MongoDB Atlas setup
-
-Create a `.env.local` file in the project root with:
-
-```bash
-MONGODB_URI=your_mongodb_atlas_connection_string
-MONGODB_DB=your_database_name
-MONGODB_COLLECTION=earthquakes
-```
-
-`MONGODB_COLLECTION` is optional (defaults to `earthquakes`).
-
-The API route `GET /api/earthquakes` reads documents from this collection and converts them to GeoJSON points for the cluster map.
-Supported coordinate fields in each document:
-
-- `geometry.coordinates: [lng, lat]`
-- `location.coordinates: [lng, lat]`
-- `coordinates: [lng, lat]`
-- `longitude` + `latitude`
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
 ## Learn More
 
