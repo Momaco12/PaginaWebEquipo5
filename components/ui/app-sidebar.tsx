@@ -11,33 +11,50 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar"
 
-import { Home, Map, Settings } from "lucide-react"
+import { Home, Map, Settings, Bell } from "lucide-react"
+import Link from "next/link"
 
 export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2 py-1.5">
-            <Home />
-          
+          <Home />
         </div>
       </SidebarHeader>
+
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+
           <SidebarMenu>
+            {/* Home */}
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="Home" isActive>
                 <Home />
                 <span>Home</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
+
+            {/* Map */}
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="Map">
                 <Map />
                 <span>Map</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
+
+            {/*  ALERTAS */}
+            <SidebarMenuItem>
+              <Link href="/alertas">
+                <SidebarMenuButton tooltip="Alertas">
+                  <Bell />
+                  <span>Alertas</span>
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+
+            {/* Settings */}
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="Settings">
                 <Settings />
@@ -61,6 +78,7 @@ export function AppSidebar() {
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
+
       <SidebarFooter>
         <div className="text-xs text-muted-foreground px-2 py-1">
           Footer content
