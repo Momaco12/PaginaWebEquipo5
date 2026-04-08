@@ -11,7 +11,7 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar"
 
-import { Home, Map, Settings } from "lucide-react"
+import { Home, Map, Settings, Bell } from "lucide-react"
 
 export function AppSidebar() {
   return (
@@ -26,12 +26,21 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarMenu>
+            
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="Home" isActive>
                 <Home />
                 <span>Home</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
+
+            <SidebarMenuItem>
+  <SidebarMenuButton tooltip="Alertas">
+    <Bell /> {/* Aquí ponemos la campana */}
+    <span>Alertas</span> {/* Aquí el texto que verá el usuario */}
+  </SidebarMenuButton>
+</SidebarMenuItem>
+            
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="Map">
                 <Map />
