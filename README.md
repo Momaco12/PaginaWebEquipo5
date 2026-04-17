@@ -27,6 +27,16 @@ source ~/.bashrc
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+---
+## en caso de q no sirva: 
+```sh
+rm -rf node_modules
+rm package-lock.json
+
+##lo volvemos a installar despues de borrar
+
+npm install
+```
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
