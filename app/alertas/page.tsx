@@ -37,13 +37,14 @@ const getIcon = (type: Alert['type']) => {
 
 export default function AlertsPage() {
     const alerts = mockAlerts
+    // TODO: reemplazar por fetch a la API cuando esté lista
 
     const nuevas       = alerts.filter(a => a.status === 'Nuevas').length
     const criticas     = alerts.filter(a => a.type === 'Críticas').length
     const advertencias = alerts.filter(a => a.type === 'Advertencias').length
 
     return (
-        <div style={{ padding: '2rem', maxWidth: '900px' }}>
+        <div style={{ padding: '2rem', marginLeft: '3rem' }}>
 
             {/* ENCABEZADO */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
