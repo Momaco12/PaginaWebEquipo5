@@ -44,7 +44,7 @@ export default function AlertsPage() {
     const advertencias = alerts.filter(a => a.type === 'Advertencias').length
 
     return (
-        <div style={{ padding: '2rem', maxWidth: '900px' }}>
+        <div style={{ padding: '2rem', marginLeft: '3rem' }}>
 
             {/* ENCABEZADO */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
