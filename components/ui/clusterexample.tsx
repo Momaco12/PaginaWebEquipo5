@@ -6,7 +6,7 @@ import { Map, MapClusterLayer, MapPopup, MapControls } from "@/components/ui/map
 import { useSidebar } from "@/components/ui/sidebar";
 
 interface AreaProperties {
-  name?: string;
+  name_area?: string;
   cultivo?: string;
   fecha_hora?: string;
   humedad_suelo?: number;
@@ -56,31 +56,6 @@ interface AreaProperties {
 
 type AreaFeature = GeoJSON.Feature<GeoJSON.Geometry, AreaProperties>;
 
-function averagePosition(points: [number, number][]): [number, number] | null {
-  if (!points.length) return null;
-
-  const totals = points.reduce(
-    (acc, point) => ({ lng: acc.lng + point[0], lat: acc.lat + point[1] }),
-    { lng: 0, lat: 0 }
-  );
-
-  return [totals.lng / points.length, totals.lat / points.length];
-}
-
-function collectCoordinatePairs(value: unknown): [number, number][] {
-  if (!Array.isArray(value)) return [];
-
-  if (
-    value.length >= 2 &&
-    typeof value[0] === "number" &&
-    typeof value[1] === "number"
-  ) {
-    return [[value[0], value[1]]];
-  }
-
-  return value.flatMap((item) => collectCoordinatePairs(item));
-}
-
 function buildSparklinePath(values: number[], width = 140, height = 40) {
   if (!values.length) return "";
 
@@ -98,40 +73,6 @@ function buildSparklinePath(values: number[], width = 140, height = 40) {
     .join(" ");
 
   return path;
-}
-
-function toClusterPoint(feature: AreaFeature): GeoJSON.Feature<GeoJSON.Point, AreaProperties> | null {
-  const geometry = feature.geometry;
-  if (!geometry) return null;
-
-  let coordinates: [number, number] | null = null;
-
-  if (geometry.type === "Point") {
-    const pairs = collectCoordinatePairs(geometry.coordinates);
-    coordinates = pairs[0] ?? null;
-  }
-
-  if (geometry.type === "Polygon") {
-    const pairs = collectCoordinatePairs(geometry.coordinates);
-    coordinates = averagePosition(pairs);
-  }
-
-  if (geometry.type === "MultiPolygon") {
-    const pairs = collectCoordinatePairs(geometry.coordinates);
-    coordinates = averagePosition(pairs);
-  }
-
-  if (!coordinates) return null;
-
-  return {
-    type: "Feature",
-    id: feature.id,
-    geometry: {
-      type: "Point",
-      coordinates,
-    },
-    properties: feature.properties ?? {},
-  };
 }
 
 export function ClusterExample() {
@@ -155,23 +96,21 @@ export function ClusterExample() {
 
     const loadData = async () => {
       try {
-        const response = await fetch("/api/v1/area_riego", { cache: "no-store" });
+        const response = await fetch("http://localhost:8080/api/areas", { cache: "no-store" });
         if (!response.ok) {
           throw new Error(`Request failed with status ${response.status}`);
         }
 
         const raw = await response.json();
-        const featuresRaw: GeoJSON.Feature<GeoJSON.Geometry, AreaProperties>[] =
-          Array.isArray(raw) ? raw : (raw?.features ?? []);
-
-        const features = featuresRaw
-          .map((feature) => toClusterPoint(feature))
-          .filter(
-            (
-              feature
-            ): feature is GeoJSON.Feature<GeoJSON.Point, AreaProperties> =>
-              feature !== null
-          );
+        const features = raw.map((item: any) => ({
+          type: "Feature" as const,
+          id: item.id,
+          geometry: {
+            type: "Point" as const,
+            coordinates: [item.longitud, item.latitud] as [number, number],
+          },
+          properties: item,
+        }));
 
         if (!isMounted) return;
 
@@ -214,7 +153,11 @@ export function ClusterExample() {
       return [-103.59, 40.66];
     }
 
-    return averagePosition(coordinates) ?? [-103.59, 40.66];
+    const totals = coordinates.reduce(
+      (acc, point) => ({ lng: acc.lng + point[0], lat: acc.lat + point[1] }),
+      { lng: 0, lat: 0 }
+    );
+    return [totals.lng / coordinates.length, totals.lat / coordinates.length];
   }, [data]);
 
   const sidebarPanelLeft = sidebarState === "collapsed" ? 47.2 : 255.2;
@@ -349,7 +292,7 @@ export function ClusterExample() {
           >
             <div className="space-y-1 p-1">
               <p className="text-sm font-medium">
-                {selectedPoint.properties.name ?? "Area"}
+                {selectedPoint.properties.name_area ?? "Area"}
               </p>
               <p className="text-sm">Cultivo: {selectedPoint.properties.cultivo ?? "N/A"}</p>
               <p className="text-sm">
@@ -385,7 +328,7 @@ export function ClusterExample() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-base font-semibold">
-                      {panelPoint.properties.name ?? "Area"}
+                      {panelPoint.properties.name_area ?? "Area"}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {panelPoint.coordinates[0].toFixed(4)}, {panelPoint.coordinates[1].toFixed(4)}
