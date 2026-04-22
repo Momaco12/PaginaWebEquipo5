@@ -1,9 +1,22 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { AlertTriangle, ArrowRight, Leaf, MapPin, Square } from "lucide-react";
 
 import { Map, MapClusterLayer, MapPopup, MapControls } from "@/components/ui/map";
 import { useSidebar } from "@/components/ui/sidebar";
+
+interface TelemetryData {
+  fechaHora: string;
+  humedadSuelo?: number;
+  temperatura?: number;
+  radiacionSolar?: number;
+  evapotranspiracion?: number;
+  consumoAgua?: number;
+  conductividadSuelo?: number;
+  desarrolloVegetativo?: string;
+}
 
 interface AreaProperties {
   name_area?: string;
@@ -54,25 +67,180 @@ interface AreaProperties {
   [key: string]: unknown;
 }
 
-type AreaFeature = GeoJSON.Feature<GeoJSON.Geometry, AreaProperties>;
+function prepareChartData(telemetryArray: any[]): any[] {
+  return telemetryArray.map((item) => {
+    const date = new Date(item.fechaHora);
+    const timeStr = date.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+    return {
+      time: timeStr,
+      humedadSuelo: item.humedadSuelo ?? null,
+      temperatura: item.temperatura ?? null,
+    };
+  });
+}
 
-function buildSparklinePath(values: number[], width = 140, height = 40) {
-  if (!values.length) return "";
+function CustomTooltip({ active, payload }: { active?: boolean; payload?: any[] }) {
+  if (!active || !payload || payload.length === 0) return null;
+  const entry = payload[0]?.payload;
 
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const span = max - min || 1;
-  const step = values.length > 1 ? width / (values.length - 1) : width;
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm">
+      <p className="font-semibold text-slate-900">{entry?.time ?? "Tiempo"}</p>
+      <p className="mt-1 text-slate-600">Humedad: {entry?.humedadSuelo != null ? `${entry.humedadSuelo.toFixed(1)}%` : "N/A"}</p>
+      <p className="text-slate-600">Temperatura: {entry?.temperatura != null ? `${entry.temperatura.toFixed(1)}°C` : "N/A"}</p>
+    </div>
+  );
+}
 
-  const path = values
-    .map((value, idx) => {
-      const x = idx * step;
-      const y = height - ((value - min) / span) * height;
-      return `${idx === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
-    })
-    .join(" ");
+function ResumeSidebar({
+  properties,
+  chartData,
+  historyLoading,
+  period,
+  onChangePeriod,
+  onClose,
+}: {
+  properties: AreaProperties;
+  chartData: any[];
+  historyLoading: boolean;
+  period: "day" | "week" | "month";
+  onChangePeriod: (period: "day" | "week" | "month") => void;
+  onClose: () => void;
+}) {
+  const lastHumidity = chartData.length ? chartData[chartData.length - 1].humedadSuelo : null;
+  const showAlert = typeof lastHumidity === "number" && lastHumidity < 20;
+  const sizeValue = properties.superficie_ha ?? properties.general?.superficie_ha;
 
-  return path;
+  return (
+    <div className="space-y-5 rounded-xl bg-white p-5 shadow-sm text-slate-900">
+      <div className="flex items-start gap-4">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+          <Leaf className="h-6 w-6" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-500">Área seleccionada</p>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {properties.name_area ?? "Área"}
+          </h1>
+          <p className="text-sm text-slate-500">
+            {properties.tipo_cultivo ?? "Cultivo desconocido"}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-slate-50 p-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Periodo</p>
+          <p className="mt-1 text-sm font-semibold text-slate-900">{period}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(["day", "week", "month"] as const).map((p) => (
+            <button
+              key={p}
+              type="button"
+              className={
+                "rounded-full px-3 py-1 text-xs font-semibold transition " +
+                (period === p
+                  ? "bg-slate-900 text-white"
+                  : "bg-white text-slate-600 shadow-sm hover:bg-slate-100")
+              }
+              onClick={() => onChangePeriod(p)}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Humedad del suelo</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900">Último dato</p>
+          </div>
+          <div className="rounded-2xl bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm">
+            {lastHumidity != null ? `${lastHumidity.toFixed(1)}%` : "N/A"}
+          </div>
+        </div>
+        <div className="mt-4 h-40">
+          {historyLoading ? (
+            <div className="flex h-full items-center justify-center text-sm text-slate-500">Loading history…</div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="humidityGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#64748b" }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#64748b" }} unit="%" width={30} />
+                <CartesianGrid vertical={false} stroke="#e2e8f0" strokeDasharray="3 3" />
+                <Tooltip content={<CustomTooltip />} />
+                <Area type="monotone" dataKey="humedadSuelo" stroke="#3b82f6" fill="url(#humidityGradient)" strokeWidth={2} dot={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      <div className="grid gap-3">
+        <div className="flex items-center gap-3 rounded-3xl bg-slate-50 p-4">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+            <Leaf className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500">Cultivo</p>
+            <p className="font-semibold text-slate-900">{properties.tipo_cultivo ?? "N/A"}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 rounded-3xl bg-slate-50 p-4">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+            <MapPin className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500">Ubicación</p>
+            <p className="font-semibold text-slate-900">{properties.name_area ?? "N/A"}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 rounded-3xl bg-slate-50 p-4">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+            <Square className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500">Tamaño</p>
+            <p className="font-semibold text-slate-900">
+              {sizeValue != null ? `${sizeValue} hectáreas` : "N/A"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {showAlert && (
+        <div className="rounded-3xl bg-red-50 p-4 text-sm text-slate-900">
+          <div className="flex items-start gap-3">
+            <div className="mt-1 rounded-2xl bg-red-100 p-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-semibold text-slate-900">Critical Soil Moisture</p>
+              <p className="mt-1 text-slate-600">Última humedad de suelo debajo del 20%. Revisa el riego urgente.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={onClose}
+        className="flex w-full items-center justify-center gap-2 rounded-3xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+      >
+        Ver mas detalles
+        <ArrowRight className="h-4 w-4" />
+      </button>
+    </div>
+  );
 }
 
 export function ClusterExample() {
@@ -86,7 +254,7 @@ export function ClusterExample() {
     history?: unknown[];
   } | null>(null);
   const [period, setPeriod] = useState<"day" | "week" | "month">("day");
-  const [history, setHistory] = useState<Array<Record<string, any>> | null>(null);
+  const [history, setHistory] = useState<TelemetryData[] | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const lastSelectedPointRef = useRef<typeof selectedPoint>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -162,14 +330,7 @@ export function ClusterExample() {
 
   const sidebarPanelLeft = sidebarState === "collapsed" ? 47.2 : 255.2;
 
-  const metricDefs = [
-    { key: "humedad_suelo", label: "Humedad suelo", unit: "%" },
-    { key: "temperatura", label: "Temperatura", unit: "°C" },
-    { key: "radiacion_solar", label: "Radiación solar", unit: "W/m²" },
-    { key: "evapotranspiracion", label: "Evapotranspiración", unit: "mm" },
-    { key: "consumo_agua", label: "Consumo de agua", unit: "m³" },
-    { key: "conductividad_suelo", label: "Conductividad suelo", unit: "dS/m" },
-  ];
+  const chartData = useMemo(() => (history ? prepareChartData(history) : []), [history]);
 
   const [isPanelVisible, setIsPanelVisible] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -201,7 +362,24 @@ export function ClusterExample() {
     setHistoryLoading(true);
     const abortController = new AbortController();
 
-    fetch(`/api/v1/area_riego/${id}/history?period=${period}`, {
+    const now = new Date();
+    let start: Date;
+    switch (period) {
+      case "week":
+        start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case "month":
+        start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+    }
+
+    const startStr = start.toISOString();
+    const endStr = now.toISOString();
+
+    fetch(`http://localhost:8080/api/analytics/area/${id}?start=${encodeURIComponent(startStr)}&end=${encodeURIComponent(endStr)}`, {
       signal: abortController.signal,
       cache: "no-store",
     })
@@ -211,9 +389,7 @@ export function ClusterExample() {
       })
       .then((data) => {
         if (Array.isArray(data)) {
-          setHistory(data);
-        } else if (Array.isArray(data?.history)) {
-          setHistory(data.history);
+          setHistory(data as TelemetryData[]);
         } else {
           setHistory(null);
         }
@@ -253,10 +429,11 @@ export function ClusterExample() {
             });
 
             try {
-              const id = feature.id;
+              console.log(feature)
+              const id = feature.properties.id;
               if (id == null) return;
 
-              const response = await fetch(`/api/v1/area_riego/${id}`, { cache: "no-store" });
+              const response = await fetch(`http://localhost:8080/api/areas/${id}`, { cache: "no-store" });
               if (!response.ok) return;
 
               const apiFeature = (await response.json()) as GeoJSON.Feature<GeoJSON.Geometry, AreaProperties>;
@@ -324,101 +501,14 @@ export function ClusterExample() {
             if (!panelPoint) return null;
 
             return (
-              <>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-base font-semibold">
-                      {panelPoint.properties.name_area ?? "Area"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {panelPoint.coordinates[0].toFixed(4)}, {panelPoint.coordinates[1].toFixed(4)}
-                    </p>
-                  </div>
-                  <button
-                    className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted/80"
-                    onClick={() => setSelectedPoint(null)}
-                  >
-                    Close
-                  </button>
-                </div>
-
-                <div className="mt-4 space-y-4">
-                  <div className="flex flex-col gap-2">
-                    <p className="text-xs font-medium uppercase text-muted-foreground">Period</p>
-                    <div className="flex gap-2">
-                      {(["day", "week", "month"] as const).map((p) => (
-                        <button
-                          key={p}
-                          type="button"
-                          className={
-                            "rounded-md px-2 py-1 text-xs font-medium transition " +
-                            (period === p
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted/20 text-muted-foreground hover:bg-muted/40")
-                          }
-                          onClick={() => setPeriod(p)}
-                        >
-                          {p}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-medium uppercase text-muted-foreground">Historic (by {period})</p>
-                    {historyLoading ? (
-                      <p className="text-xs text-muted-foreground">Loading history…</p>
-                    ) : !history || history.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">No history available.</p>
-                    ) : (
-                      <div className="space-y-3">
-                        {metricDefs.map((metric) => {
-                          const values = history
-                            .map((entry) => Number(entry[metric.key]))
-                            .filter((n) => !Number.isNaN(n));
-                          const latest = values[values.length - 1];
-                          const path = buildSparklinePath(values);
-
-                          return (
-                            <div key={metric.key} className="flex items-center justify-between gap-2">
-                              <div className="min-w-[110px]">
-                                <p className="text-xs font-medium">{metric.label}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {latest ?? "N/A"} {metric.unit}
-                                </p>
-                              </div>
-                              <svg width={140} height={40} className="flex-shrink-0">
-                                <path
-                                  d={path}
-                                  stroke="currentColor"
-                                  strokeWidth={2}
-                                  fill="none"
-                                  strokeLinecap="round"
-                                />
-                              </svg>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-medium uppercase text-muted-foreground">Static info</p>
-                    <p>
-                      Cultivo: {panelPoint.properties.tipo_cultivo ?? panelPoint.properties.cultivo ?? "N/A"}
-                    </p>
-                    <p>Tipo de tierra: {panelPoint.properties.tipo_tierra ?? "N/A"}</p>
-                    <p>
-                      Superficie: {panelPoint.properties.superficie_ha ?? panelPoint.properties.general?.superficie_ha ?? "N/A"} ha
-                    </p>
-                    <p>Capacidad de campo: {panelPoint.properties.capacidad_campo ?? "N/A"}</p>
-                    <p>Punto de marchitez: {panelPoint.properties.punto_marchitez ?? "N/A"}</p>
-                    <p>Lat: {panelPoint.properties.latitud ?? panelPoint.coordinates[1]}</p>
-                    <p>Lng: {panelPoint.properties.longitud ?? panelPoint.coordinates[0]}</p>
-                  </div>
-                </div>
-              </>
+              <ResumeSidebar
+                properties={panelPoint.properties}
+                chartData={chartData}
+                historyLoading={historyLoading}
+                period={period}
+                onChangePeriod={setPeriod}
+                onClose={() => setSelectedPoint(null)}
+              />
             );
           })()}
         </aside>

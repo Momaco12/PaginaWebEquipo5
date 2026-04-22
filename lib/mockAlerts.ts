@@ -1,4 +1,16 @@
-export const mockAlerts = [
+export interface Alert {
+    id: number;
+    title: string;
+    message: string;
+    type: 'critical' | 'warning' | 'info';
+    status: string;
+    area: string;
+    time: string;
+    priority: 'Alta' | 'Media' | 'Baja';
+    category: string;
+}
+
+export const mockAlerts: Alert[] = [
     {
         id: 1,
         title: 'Humedad del suelo crítica',
