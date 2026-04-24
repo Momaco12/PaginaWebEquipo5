@@ -8,7 +8,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarSeparator,
 } from "@/components/ui/sidebar"
 
 import { Home, LayoutGrid, Map, Settings, Bell } from "lucide-react"
@@ -39,15 +38,13 @@ export function AppSidebar() {
               </Link>
             </SidebarMenuItem>
 
-            {/* Map - Ahora con Link funcional */}
+            {/* Map */}
             <SidebarMenuItem>
               <Link href="/">
-                <Link href="/map">
                 <SidebarMenuButton tooltip="Map">
-                    <Map />
-                    <span>Map</span>
-                  </SidebarMenuButton>
-              </Link>
+                  <Map />
+                  <span>Map</span>
+                </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
 
