@@ -19,7 +19,8 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2 py-1.5">
-          <Home />
+          <Home size={20} />
+          <span className="font-bold"></span>
         </div>
       </SidebarHeader>
 
@@ -30,21 +31,25 @@ export function AppSidebar() {
           <SidebarMenu>
             {/* Home */}
             <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Home" isActive>
-                <Home />
-                <span>Home</span>
-              </SidebarMenuButton>
+              <Link href="/">
+                <SidebarMenuButton tooltip="Home">
+                  <Home />
+                  <span>Home</span>
+                </SidebarMenuButton>
+              </Link>
             </SidebarMenuItem>
 
-            {/* Map */}
+            {/* Map - Ahora con Link funcional */}
             <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Map">
-                <Map />
-                <span>Map</span>
-              </SidebarMenuButton>
+              <Link href="/map">
+                <SidebarMenuButton tooltip="Map">
+                  <Map />
+                  <span>Map</span>
+                </SidebarMenuButton>
+              </Link>
             </SidebarMenuItem>
 
-            {/*  ALERTAS */}
+            {/* ALERTAS */}
             <SidebarMenuItem>
               <Link href="/alertas">
                 <SidebarMenuButton tooltip="Alertas">
@@ -54,34 +59,24 @@ export function AppSidebar() {
               </Link>
             </SidebarMenuItem>
 
-            {/* Settings */}
+            {/* Settings - Link global a la página de ajustes */}
             <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Settings">
-                <Settings />
-                <span>Settings</span>
-              </SidebarMenuButton>
+              <Link href="/settings">
+                <SidebarMenuButton tooltip="Settings">
+                  <Settings />
+                  <span>Settings</span>
+                </SidebarMenuButton>
+              </Link>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
 
-        <SidebarSeparator />
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Other</SidebarGroupLabel>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Dummy Action">
-                <Settings />
-                <span>Dummy Action</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
+        {/* Eliminamos la sección 'Other' y el Dummy Action para limpiar la interfaz */}
       </SidebarContent>
 
       <SidebarFooter>
         <div className="text-xs text-muted-foreground px-2 py-1">
-          Footer content
+          {new Date().getFullYear()} - Equipo 5
         </div>
       </SidebarFooter>
     </Sidebar>

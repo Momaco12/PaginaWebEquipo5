@@ -1,9 +1,10 @@
 'use client'
 import React from 'react'
 import { mockAlerts, Alert } from '@/lib/mockAlerts'
-import {Bell, MapPin, Clock} from 'lucide-react'
+import { Bell, MapPin, Clock, Settings } from 'lucide-react'
+import Link from 'next/link'
 
-//ESTILOSSSSSS
+// --- FUNCIONES DE ESTILO (Tu lógica original intacta) ---
 const getAlertStyle = (type: Alert['type']) => {
     switch (type) {
         case 'critical': return { backgroundColor: '#fff0f0', borderColor: '#f5c6c6' }
@@ -37,20 +38,43 @@ const getIcon = (type: Alert['type']) => {
 
 export default function AlertsPage() {
     const alerts = mockAlerts
-    // TODO: reemplazar por fetch a la API cuando esté lista
 
-    const nuevas       = alerts.filter(a => a.status === 'Nuevas').length
-    const criticas     = alerts.filter(a => a.type === 'Críticas').length
-    const advertencias = alerts.filter(a => a.type === 'Advertencias').length
+    // FILTROS: Mantenemos la lógica de conteo que ya tenías
+    const nuevas       = alerts.filter(a => a.status === 'Nueva').length
+    const criticas     = alerts.filter(a => (a.type as string) === 'critical').length
+    const advertencias = alerts.filter(a => (a.type as string) === 'warning').length
 
     return (
         <div style={{ padding: '2rem', marginLeft: '3rem' }}>
 
             {/* ENCABEZADO */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                <Bell size={24} color="#e53935" />
-                <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 700 }}>Alertas</h1>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Bell size={24} color="#e53935" />
+                    <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 700 }}>Alertas</h1>
+                </div>
+                
+                {/* BOTÓN DE SETTINGS: Ahora es un Link a la página global /settings */}
+                <Link href="/settings">
+                    <button 
+                        style={{
+                            background: '#f0f0f0',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            padding: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#e0e0e0'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = '#f0f0f0'}
+                    >
+                        <Settings size={24} color="#666" />
+                    </button>
+                </Link>
             </div>
+
             <p style={{ margin: '0 0 1.5rem', color: '#666', fontSize: '0.9rem' }}>
                 {alerts.length} alertas encontradas
             </p>
@@ -90,7 +114,6 @@ export default function AlertsPage() {
                             padding: '1.25rem',
                             boxSizing: 'border-box',
                         }}>
-                            {/* Título + badge estado */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                                 <span style={{ color: icon.color, fontSize: '1.1rem' }}>{icon.symbol}</span>
                                 <strong style={{ fontSize: '1rem' }}>{alert.title}</strong>
@@ -108,12 +131,10 @@ export default function AlertsPage() {
                                 </span>
                             </div>
 
-                            {/* Descripción */}
                             <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#444', lineHeight: 1.5 }}>
                                 {alert.message}
                             </p>
 
-                            {/* Área + tiempo + prioridad */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.8rem', color: '#666', marginBottom: '0.75rem' }}>
                                 <MapPin size={14} />  {alert.area}
                                 <Clock size={14} />   {alert.time}
@@ -127,7 +148,6 @@ export default function AlertsPage() {
                                 </span>
                             </div>
 
-                            {/* Categoría */}
                             <span style={{
                                 backgroundColor: '#e8f0fe',
                                 color: '#1a73e8',
