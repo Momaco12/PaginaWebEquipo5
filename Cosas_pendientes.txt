@@ -1,0 +1,5 @@
+-- los campos de ultima actualizacion dependen del request entregado es decir si pides los 
+datos del mes pasado te muestra la actualizacion mas reciente de ese mes, no necesariamente 
+la de hoy
+
+

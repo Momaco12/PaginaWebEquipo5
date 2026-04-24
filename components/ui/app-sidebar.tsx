@@ -11,7 +11,7 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar"
 
-import { Home, Map, Settings, Bell } from "lucide-react"
+import { Home, LayoutGrid, Map, Settings, Bell } from "lucide-react"
 import Link from "next/link"
 
 export function AppSidebar() {
@@ -50,6 +50,16 @@ export function AppSidebar() {
                 <SidebarMenuButton tooltip="Alertas">
                   <Bell />
                   <span>Alertas</span>
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+
+            {/* ÁREAS */}
+            <SidebarMenuItem>
+              <Link href="/areas">
+                <SidebarMenuButton tooltip="Áreas">
+                  <LayoutGrid />
+                  <span>Áreas</span>
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
