@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, Bell, Leaf, MapPin, Navigation2, Square } from "lucide-react";
+import { AlertTriangle, ArrowRight, Leaf, MapPin, Navigation2, Square } from "lucide-react";
 
 import { Map, MapClusterLayer, MapPopup, MapControls, useMap } from "@/components/ui/map";
 import { useSidebar } from "@/components/ui/sidebar";
-import { TelemetryChart, prepareChartData } from "@/components/ui/telemetry-chart";
+import { TelemetryChart, prepareChartData, FIELD_CONFIG, FieldKey } from "@/components/ui/telemetry-chart";
 
 interface TelemetryData {
   fechaHora: string;
@@ -23,6 +23,7 @@ export interface AlertDto {
   id: string;
   area: string
   tipoAlerta: "EXCESO" | "INSUFICIENCIA" | "PERDIDA_CONEXION"; // Tipado estricto
+  campo?: FieldKey;
   valor_reportado: number;
   fechaHora: string; // ISO String que viene del Instant
   atendido: boolean;
@@ -37,11 +38,12 @@ function getAlertDisplayHeader(alert: AlertDto): string {
 }
 
 function getAlertDisplayValue(alert: AlertDto) {
+  console.log("Alert for display value:", alert);
   const value =
     alert.valor_reportado 
-
+  
   if (value == null) return null;
-
+  return value.toString();
 }
 
 function getAlertDisplayStatus(alert: AlertDto): string {
@@ -60,6 +62,11 @@ function formatAlertDate(alert: AlertDto): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function getAlertFieldConfig(alert: AlertDto) {
+  if (!alert.campo) return null;
+  return FIELD_CONFIG.find((f) => f.key === alert.campo) ?? null;
 }
 
 interface AreaProperties {
@@ -93,7 +100,7 @@ type AlertArea = {
   coordinates: [number, number];
 };
 
-function MapAlertStrip({ alertAreas }: { alertAreas: AlertArea[] }) {
+function MapAlertStrip({ alertAreas, leftOffset }: { alertAreas: AlertArea[]; leftOffset: number }) {
   const { map } = useMap();
 
   if (alertAreas.length === 0) return null;
@@ -115,46 +122,77 @@ function MapAlertStrip({ alertAreas }: { alertAreas: AlertArea[] }) {
     );
   };
 
+  const primary = alertAreas[0];
+  const totalAlerts = alertAreas.reduce((sum, a) => sum + a.alertCount, 0);
+
   return (
-    <div className="absolute bottom-10 left-0 right-0 z-10 px-4 pointer-events-none">
-      <div className="pointer-events-auto max-w-2xl mx-auto">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="flex items-center gap-1.5 rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white shadow-lg">
-            <Bell className="h-3 w-3" />
-            {alertAreas.length} área{alertAreas.length > 1 ? "s" : ""} con alertas
+    <div className="fixed bottom-4 z-20 pointer-events-none" style={{ left: leftOffset + 16, right: 56 }}>
+      <div className="pointer-events-auto flex items-stretch bg-white rounded-2xl shadow-lg overflow-hidden">
+        {/* Alert count */}
+        <div className="flex items-center gap-2 bg-red-50 px-4 py-3 shrink-0 border-r border-red-100">
+          <AlertTriangle className="h-4 w-4 text-red-600" />
+          <span className="text-xs font-semibold text-red-700 whitespace-nowrap">
+            {totalAlerts} alerta{totalAlerts !== 1 ? "s" : ""} activa{totalAlerts !== 1 ? "s" : ""}
+          </span>
+        </div>
+
+        {/* Primary area info */}
+        <div className="flex items-center gap-3 px-4 py-3 flex-1 min-w-0">
+          <MapPin className="h-4 w-4 text-slate-400 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-slate-900 truncate">{primary.name}</p>
+            <p className="text-xs text-slate-500">
+              {primary.alertCount} pendiente{primary.alertCount !== 1 ? "s" : ""}
+              {alertAreas.length > 1 && ` · ${alertAreas.length - 1} área${alertAreas.length - 1 > 1 ? "s" : ""} más con alertas`}
+            </p>
           </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-3 px-4 py-3 shrink-0 border-l border-slate-100">
           <button
             type="button"
             onClick={focusAll}
-            className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-800 shadow-lg hover:bg-slate-50 transition"
+            className="text-xs font-semibold text-slate-500 hover:text-slate-900 transition"
           >
-            <Navigation2 className="h-3 w-3" />
             Ver todas
           </button>
-        </div>
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {alertAreas.map((area) => (
-            <div
-              key={area.id}
-              className="flex-shrink-0 flex items-center gap-2.5 rounded-2xl bg-white/95 backdrop-blur px-3 py-2 shadow-lg"
-            >
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-100">
-                <span className="text-[11px] font-bold text-red-600">{area.alertCount}</span>
-              </div>
-              <span className="max-w-[100px] truncate text-sm font-medium text-slate-900">{area.name}</span>
-              <button
-                type="button"
-                onClick={() => flyTo(area.coordinates)}
-                className="rounded-full bg-slate-900 px-2.5 py-0.5 text-[11px] font-semibold text-white hover:bg-slate-700 transition"
-              >
-                Ir
-              </button>
-            </div>
-          ))}
+          <button
+            type="button"
+            onClick={() => flyTo(primary.coordinates)}
+            className="flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-1.5 text-xs font-semibold text-white hover:bg-slate-700 transition"
+          >
+            <Navigation2 className="h-3 w-3" />
+            Ir al área
+          </button>
         </div>
       </div>
     </div>
   );
+}
+
+function MapFitBounds({ coordinates }: { coordinates: [number, number][] }) {
+  const { map, isLoaded } = useMap();
+  const fitted = useRef(false);
+
+  useEffect(() => {
+    if (!isLoaded || !map || coordinates.length === 0 || fitted.current) return;
+    fitted.current = true;
+
+    if (coordinates.length === 1) {
+      map.flyTo({ center: coordinates[0], zoom: 14, duration: 1000 });
+      return;
+    }
+
+    const lngs = coordinates.map((c) => c[0]);
+    const lats = coordinates.map((c) => c[1]);
+    map.fitBounds(
+      [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+      { padding: 80, maxZoom: 15, duration: 1000 }
+    );
+  }, [isLoaded, map, coordinates]);
+
+  return null;
 }
 
 function ResumeSidebar({
@@ -165,6 +203,7 @@ function ResumeSidebar({
   historyLoading,
   period,
   onChangePeriod,
+  onMarkAtendido,
 }: {
   id?: string | number;
   properties: AreaProperties;
@@ -173,8 +212,10 @@ function ResumeSidebar({
   historyLoading: boolean;
   period: "day" | "week" | "month";
   onChangePeriod: (period: "day" | "week" | "month") => void;
+  onMarkAtendido: (alertId: string) => Promise<void>;
 }) {
-  const alertCount = alerts.length;
+  const [markingIds, setMarkingIds] = useState<Set<string>>(new Set());
+  const alertCount = alerts.filter((a) => !a.atendido).length;
   const sizeValue = properties.superficie_ha;
 
   return (
@@ -295,12 +336,48 @@ function ResumeSidebar({
                     <div>
                       <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Valor reportado</p>
                       <p className="mt-1 text-lg font-semibold text-slate-900">
-                        {getAlertDisplayValue(alert) ?? "N/A"}
+                        {getAlertDisplayValue(alert) != null
+                          ? `${getAlertDisplayValue(alert)}${getAlertFieldConfig(alert)?.unit ?? ""}`
+                          : "N/A"}
                       </p>
                     </div>
+                    {(() => {
+                      const fieldCfg = getAlertFieldConfig(alert);
+                      if (!fieldCfg) return null;
+                      return (
+                        <span
+                          className="flex items-center gap-1.5 self-start rounded-full px-3 py-1 text-xs font-semibold sm:self-auto"
+                          style={{ backgroundColor: `${fieldCfg.color}18`, color: fieldCfg.color }}
+                        >
+                          <span
+                            className="inline-block h-2 w-2 rounded-full"
+                            style={{ backgroundColor: fieldCfg.color }}
+                          />
+                          {fieldCfg.label}
+                        </span>
+                      );
+                    })()}
                   </div>
 
-                  
+                  {!alert.atendido && (
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        type="button"
+                        disabled={markingIds.has(String(alert.id))}
+                        onClick={async () => {
+                          const sid = String(alert.id);
+                          setMarkingIds((prev) => new Set(prev).add(sid));
+                          try { await onMarkAtendido(sid); }
+                          finally {
+                            setMarkingIds((prev) => { const n = new Set(prev); n.delete(sid); return n; });
+                          }
+                        }}
+                        className="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {markingIds.has(String(alert.id)) ? "Procesando…" : "Marcar como atendido"}
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
               {alertCount > 3 && (
@@ -360,8 +437,22 @@ export function ClusterExample() {
         }
         const raw = await response.json();
 
+        const alertsResults = await Promise.allSettled(
+          raw.map((item: any) =>
+            fetch(`http://localhost:8080/api/alerts/area/${encodeURIComponent(item.id)}`, { cache: "no-store" })
+              .then((r) => (r.ok ? (r.json() as Promise<AlertDto[]>) : []))
+              .catch(() => [] as AlertDto[])
+          )
+        );
+
+        const alertsByArea: Record<string, AlertDto[]> = {};
+        raw.forEach((item: any, idx: number) => {
+          const result = alertsResults[idx];
+          alertsByArea[item.id as string] = result.status === "fulfilled" ? (result.value as AlertDto[]) : [];
+        });
+
         const features = raw.map((item: any) => {
-          const alerts: AlertDto[] = Array.isArray(item.alerts) ? item.alerts : [];
+          const alerts: AlertDto[] = alertsByArea[item.id] ?? [];
           return {
             type: "Feature" as const,
             id: item.id,
@@ -371,6 +462,7 @@ export function ClusterExample() {
             },
             properties: {
               ...item,
+              alerts,
               alertCount: alerts.filter((a) => !a.atendido).length,
             },
           };
@@ -438,6 +530,11 @@ export function ClusterExample() {
 
   const sidebarPanelLeft = sidebarState === "collapsed" ? 47.2 : 255.2;
   const chartData = useMemo(() => (history ? prepareChartData(history) : []), [history]);
+
+  const allCoordinates = useMemo<[number, number][]>(
+    () => data?.features.map((f) => f.geometry.coordinates as [number, number]) ?? [],
+    [data]
+  );
 
   const lastUpdate = useMemo(() => {
     if (!history || history.length === 0) return null;
@@ -537,6 +634,7 @@ export function ClusterExample() {
     })
       .then((res) => {
         if (!res.ok) throw new Error("Alerts fetch failed");
+        console.log("Raw alert response:", res);
         return res.json();
       })
       .then((alertData) => {
@@ -548,6 +646,21 @@ export function ClusterExample() {
 
     return () => abortController.abort();
   }, [selectedPoint]);
+
+  
+
+  const handleMarkAtendido = async (alertId: string): Promise<void> => {
+    const id = String(alertId);
+    const res = await fetch(`http://localhost:8080/api/alerts/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ atendido: true }),
+    });
+    if (!res.ok) throw new Error(`PUT failed: ${res.status}`);
+    setSelectedPointAlerts((prev) =>
+      prev.map((a) => (String(a.id) === id ? { ...a, atendido: true } : a))
+    );
+  };
 
   if (isLoading) {
     return <div className="h-[400px] w-full flex items-center justify-center">Loading map data...</div>;
@@ -625,8 +738,9 @@ export function ClusterExample() {
           </MapPopup>
         )}
 
+        <MapFitBounds coordinates={allCoordinates} />
         <MapControls />
-        <MapAlertStrip alertAreas={alertAreas} />
+        <MapAlertStrip alertAreas={alertAreas} leftOffset={sidebarPanelLeft + (isPanelOpen ? 320 : 0)} />
       </Map>
 
       {isPanelVisible && (
@@ -650,6 +764,7 @@ export function ClusterExample() {
                 historyLoading={historyLoading}
                 period={period}
                 onChangePeriod={setPeriod}
+                onMarkAtendido={handleMarkAtendido}
               />
             );
           })()}

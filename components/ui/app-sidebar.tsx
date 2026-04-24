@@ -38,10 +38,12 @@ export function AppSidebar() {
 
             {/* Map */}
             <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Map">
-                <Map />
-                <span>Map</span>
-              </SidebarMenuButton>
+              <Link href="/">
+                <SidebarMenuButton tooltip="Map">
+                  <Map />
+                  <span>Map</span>
+                </SidebarMenuButton>
+              </Link>
             </SidebarMenuItem>
 
             {/*  ALERTAS */}
