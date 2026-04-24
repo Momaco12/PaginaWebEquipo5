@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { AlertTriangle, ArrowRight, Leaf, MapPin, Square } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, ArrowRight, Leaf, MapPin, Navigation2, Square } from "lucide-react";
 
-import { Map, MapClusterLayer, MapPopup, MapControls } from "@/components/ui/map";
+import { Map, MapClusterLayer, MapPopup, MapControls, useMap } from "@/components/ui/map";
 import { useSidebar } from "@/components/ui/sidebar";
+import { TelemetryChart, prepareChartData, FIELD_CONFIG, FieldKey } from "@/components/ui/telemetry-chart";
 
 interface TelemetryData {
   fechaHora: string;
@@ -16,6 +17,56 @@ interface TelemetryData {
   consumoAgua?: number;
   conductividadSuelo?: number;
   desarrolloVegetativo?: string;
+}
+
+export interface AlertDto {
+  id: string;
+  area: string
+  tipoAlerta: "EXCESO" | "INSUFICIENCIA" | "PERDIDA_CONEXION"; // Tipado estricto
+  campo?: FieldKey;
+  valor_reportado: number;
+  fechaHora: string; // ISO String que viene del Instant
+  atendido: boolean;
+}
+
+function getAlertDisplayHeader(alert: AlertDto): string {
+  return (
+    alert.tipoAlerta
+    
+    
+  );
+}
+
+function getAlertDisplayValue(alert: AlertDto) {
+  console.log("Alert for display value:", alert);
+  const value =
+    alert.valor_reportado 
+  
+  if (value == null) return null;
+  return value.toString();
+}
+
+function getAlertDisplayStatus(alert: AlertDto): string {
+  if (alert.atendido === true) return "Atendido";
+  if (alert.atendido === false) return "Pendiente";
+  return "Sin estado";
+}
+
+function formatAlertDate(alert: AlertDto): string {
+  if (!alert.fechaHora) return "Fecha desconocida";
+  const date = new Date(alert.fechaHora);
+  return isNaN(date.getTime()) ? "Fecha inválida" : date.toLocaleString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function getAlertFieldConfig(alert: AlertDto) {
+  if (!alert.campo) return null;
+  return FIELD_CONFIG.find((f) => f.key === alert.campo) ?? null;
 }
 
 interface AreaProperties {
@@ -37,79 +88,135 @@ interface AreaProperties {
   latitud?: number;
   longitud?: number;
   last_updated?: number;
-  general?: {
-    estado_id?: number;
-    fecha_siembra?: string;
-    superficie_ha?: number;
-    densidad_plantas_ha?: number;
-  };
-  suelo?: {
-    humedad_actual?: number;
-    capacidad_de_campo?: number;
-    punto_de_marchitez?: number;
-    conductividad_electrica_ds_m?: number;
-    temperatura_suelo_c?: number;
-  };
-  riego?: {
-    sistema_activo?: boolean;
-    caudal_l_s?: number;
-    consumo_mensual_m3?: number;
-    evapotranspiracion_etc_mm_dia?: number;
-    necesidad_hidrica_m3_ha?: number;
-  };
-  ambiental?: {
-    temperatura_aire_c?: number;
-    humedad_relativa_porcentaje?: number;
-    radiacion_solar_w_m2?: number;
-    velocidad_viento_km_h?: number;
-    probabilidad_lluvia_porcentaje?: number;
-  };
+  alerts: AlertDto[];
+  alertCount?: number;
   [key: string]: unknown;
 }
 
-function prepareChartData(telemetryArray: any[]): any[] {
-  return telemetryArray.map((item) => {
-    const date = new Date(item.fechaHora);
-    const timeStr = date.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
-    return {
-      time: timeStr,
-      humedadSuelo: item.humedadSuelo ?? null,
-      temperatura: item.temperatura ?? null,
-    };
-  });
-}
+type AlertArea = {
+  id: string | number;
+  name: string;
+  alertCount: number;
+  coordinates: [number, number];
+};
 
-function CustomTooltip({ active, payload }: { active?: boolean; payload?: any[] }) {
-  if (!active || !payload || payload.length === 0) return null;
-  const entry = payload[0]?.payload;
+function MapAlertStrip({ alertAreas, leftOffset }: { alertAreas: AlertArea[]; leftOffset: number }) {
+  const { map } = useMap();
+
+  if (alertAreas.length === 0) return null;
+
+  const flyTo = (coords: [number, number]) => {
+    map?.flyTo({ center: coords, zoom: 14, duration: 1200 });
+  };
+
+  const focusAll = () => {
+    if (alertAreas.length === 1) {
+      flyTo(alertAreas[0].coordinates);
+      return;
+    }
+    const lngs = alertAreas.map((a) => a.coordinates[0]);
+    const lats = alertAreas.map((a) => a.coordinates[1]);
+    map?.fitBounds(
+      [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+      { padding: 80, duration: 1200, maxZoom: 15 }
+    );
+  };
+
+  const primary = alertAreas[0];
+  const totalAlerts = alertAreas.reduce((sum, a) => sum + a.alertCount, 0);
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm">
-      <p className="font-semibold text-slate-900">{entry?.time ?? "Tiempo"}</p>
-      <p className="mt-1 text-slate-600">Humedad: {entry?.humedadSuelo != null ? `${entry.humedadSuelo.toFixed(1)}%` : "N/A"}</p>
-      <p className="text-slate-600">Temperatura: {entry?.temperatura != null ? `${entry.temperatura.toFixed(1)}°C` : "N/A"}</p>
+    <div className="fixed bottom-4 z-20 pointer-events-none" style={{ left: leftOffset + 16, right: 56 }}>
+      <div className="pointer-events-auto flex items-stretch bg-white rounded-2xl shadow-lg overflow-hidden">
+        {/* Alert count */}
+        <div className="flex items-center gap-2 bg-red-50 px-4 py-3 shrink-0 border-r border-red-100">
+          <AlertTriangle className="h-4 w-4 text-red-600" />
+          <span className="text-xs font-semibold text-red-700 whitespace-nowrap">
+            {totalAlerts} alerta{totalAlerts !== 1 ? "s" : ""} activa{totalAlerts !== 1 ? "s" : ""}
+          </span>
+        </div>
+
+        {/* Primary area info */}
+        <div className="flex items-center gap-3 px-4 py-3 flex-1 min-w-0">
+          <MapPin className="h-4 w-4 text-slate-400 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-slate-900 truncate">{primary.name}</p>
+            <p className="text-xs text-slate-500">
+              {primary.alertCount} pendiente{primary.alertCount !== 1 ? "s" : ""}
+              {alertAreas.length > 1 && ` · ${alertAreas.length - 1} área${alertAreas.length - 1 > 1 ? "s" : ""} más con alertas`}
+            </p>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-3 px-4 py-3 shrink-0 border-l border-slate-100">
+          <button
+            type="button"
+            onClick={focusAll}
+            className="text-xs font-semibold text-slate-500 hover:text-slate-900 transition"
+          >
+            Ver todas
+          </button>
+          <button
+            type="button"
+            onClick={() => flyTo(primary.coordinates)}
+            className="flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-1.5 text-xs font-semibold text-white hover:bg-slate-700 transition"
+          >
+            <Navigation2 className="h-3 w-3" />
+            Ir al área
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
 
+function MapFitBounds({ coordinates }: { coordinates: [number, number][] }) {
+  const { map, isLoaded } = useMap();
+  const fitted = useRef(false);
+
+  useEffect(() => {
+    if (!isLoaded || !map || coordinates.length === 0 || fitted.current) return;
+    fitted.current = true;
+
+    if (coordinates.length === 1) {
+      map.flyTo({ center: coordinates[0], zoom: 14, duration: 1000 });
+      return;
+    }
+
+    const lngs = coordinates.map((c) => c[0]);
+    const lats = coordinates.map((c) => c[1]);
+    map.fitBounds(
+      [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+      { padding: 80, maxZoom: 15, duration: 1000 }
+    );
+  }, [isLoaded, map, coordinates]);
+
+  return null;
+}
+
 function ResumeSidebar({
+  id,
   properties,
+  alerts,
   chartData,
   historyLoading,
   period,
   onChangePeriod,
-  onClose,
+  onMarkAtendido,
 }: {
+  id?: string | number;
   properties: AreaProperties;
+  alerts: AlertDto[];
   chartData: any[];
   historyLoading: boolean;
   period: "day" | "week" | "month";
   onChangePeriod: (period: "day" | "week" | "month") => void;
-  onClose: () => void;
+  onMarkAtendido: (alertId: string) => Promise<void>;
 }) {
-  const lastHumidity = chartData.length ? chartData[chartData.length - 1].humedadSuelo : null;
-  const showAlert = typeof lastHumidity === "number" && lastHumidity < 20;
-  const sizeValue = properties.superficie_ha ?? properties.general?.superficie_ha;
+  const [markingIds, setMarkingIds] = useState<Set<string>>(new Set());
+  const alertCount = alerts.filter((a) => !a.atendido).length;
+  const sizeValue = properties.superficie_ha;
 
   return (
     <div className="space-y-5 rounded-xl bg-white p-5 shadow-sm text-slate-900">
@@ -152,38 +259,7 @@ function ResumeSidebar({
         </div>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Humedad del suelo</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">Último dato</p>
-          </div>
-          <div className="rounded-2xl bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm">
-            {lastHumidity != null ? `${lastHumidity.toFixed(1)}%` : "N/A"}
-          </div>
-        </div>
-        <div className="mt-4 h-40">
-          {historyLoading ? (
-            <div className="flex h-full items-center justify-center text-sm text-slate-500">Loading history…</div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="humidityGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#64748b" }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#64748b" }} unit="%" width={30} />
-                <CartesianGrid vertical={false} stroke="#e2e8f0" strokeDasharray="3 3" />
-                <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="humedadSuelo" stroke="#3b82f6" fill="url(#humidityGradient)" strokeWidth={2} dot={false} />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
+      <TelemetryChart chartData={chartData} historyLoading={historyLoading} />
 
       <div className="grid gap-3">
         <div className="flex items-center gap-3 rounded-3xl bg-slate-50 p-4">
@@ -215,30 +291,112 @@ function ResumeSidebar({
             </p>
           </div>
         </div>
-      </div>
-
-      {showAlert && (
         <div className="rounded-3xl bg-red-50 p-4 text-sm text-slate-900">
-          <div className="flex items-start gap-3">
-            <div className="mt-1 rounded-2xl bg-red-100 p-2 text-red-600">
-              <AlertTriangle className="h-5 w-5" />
-            </div>
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="font-semibold text-slate-900">Critical Soil Moisture</p>
-              <p className="mt-1 text-slate-600">Última humedad de suelo debajo del 20%. Revisa el riego urgente.</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Alertas activas</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{alertCount > 0 ? `${alertCount} alerta${alertCount === 1 ? "" : "s"}` : "Sin alertas"}</p>
+            </div>
+            <div
+              className={
+                "rounded-full px-3 py-1 text-xs font-semibold " +
+                (alertCount > 0
+                  ? "bg-red-100 text-red-700"
+                  : "bg-slate-100 text-slate-500")
+              }
+            >
+              {alertCount > 0 ? "Activa" : "Estable"}
             </div>
           </div>
-        </div>
-      )}
 
-      <button
-        type="button"
-        onClick={onClose}
+          {alertCount > 0 ? (
+            
+            <div className="mt-4 space-y-3">
+              
+              {alerts.slice(0, 3).map((alert, index) => (
+                <div key={alert.id ?? index} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Parámetro en problema</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-900">{getAlertDisplayHeader(alert)}</p>
+                      <p className="mt-1 text-xs text-slate-500">{formatAlertDate(alert)}</p>
+                    </div>
+                    <span className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] ${
+                      alert.atendido === true
+                        ? "bg-emerald-100 text-emerald-700"
+                        : alert.atendido === false
+                        ? "bg-red-100 text-red-700"
+                        : "bg-slate-100 text-slate-500"
+                    }`}>
+                      {getAlertDisplayStatus(alert)}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Valor reportado</p>
+                      <p className="mt-1 text-lg font-semibold text-slate-900">
+                        {getAlertDisplayValue(alert) != null
+                          ? `${getAlertDisplayValue(alert)}${getAlertFieldConfig(alert)?.unit ?? ""}`
+                          : "N/A"}
+                      </p>
+                    </div>
+                    {(() => {
+                      const fieldCfg = getAlertFieldConfig(alert);
+                      if (!fieldCfg) return null;
+                      return (
+                        <span
+                          className="flex items-center gap-1.5 self-start rounded-full px-3 py-1 text-xs font-semibold sm:self-auto"
+                          style={{ backgroundColor: `${fieldCfg.color}18`, color: fieldCfg.color }}
+                        >
+                          <span
+                            className="inline-block h-2 w-2 rounded-full"
+                            style={{ backgroundColor: fieldCfg.color }}
+                          />
+                          {fieldCfg.label}
+                        </span>
+                      );
+                    })()}
+                  </div>
+
+                  {!alert.atendido && (
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        type="button"
+                        disabled={markingIds.has(String(alert.id))}
+                        onClick={async () => {
+                          const sid = String(alert.id);
+                          setMarkingIds((prev) => new Set(prev).add(sid));
+                          try { await onMarkAtendido(sid); }
+                          finally {
+                            setMarkingIds((prev) => { const n = new Set(prev); n.delete(sid); return n; });
+                          }
+                        }}
+                        className="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {markingIds.has(String(alert.id)) ? "Procesando…" : "Marcar como atendido"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {alertCount > 3 && (
+                <p className="text-xs text-slate-500">Y {alertCount - 3} alerta{alertCount - 3 === 1 ? " adicional" : "s adicionales"}.</p>
+              )}
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-slate-600">La zona no tiene alertas activas actualmente.</p>
+          )}
+        </div>
+      </div>
+
+      <Link
+        href={id != null ? `/areas/${id}` : "/areas"}
         className="flex w-full items-center justify-center gap-2 rounded-3xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
       >
-        Ver mas detalles
+        Ver más detalles
         <ArrowRight className="h-4 w-4" />
-      </button>
+      </Link>
     </div>
   );
 }
@@ -253,11 +411,20 @@ export function ClusterExample() {
     properties: AreaProperties;
     history?: unknown[];
   } | null>(null);
+  const [hoveredPoint, setHoveredPoint] = useState<{
+    coordinates: [number, number];
+    properties: AreaProperties;
+  } | null>(null);
+  const [selectedPointAlerts, setSelectedPointAlerts] = useState<AlertDto[]>([]);
   const [period, setPeriod] = useState<"day" | "week" | "month">("day");
   const [history, setHistory] = useState<TelemetryData[] | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const lastSelectedPointRef = useRef<typeof selectedPoint>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Determine which point to display in popup and if it's selected
+  const displayedPoint = selectedPoint ?? hoveredPoint;
+  const isPointSelected = selectedPoint !== null;
 
   useEffect(() => {
     let isMounted = true;
@@ -268,17 +435,38 @@ export function ClusterExample() {
         if (!response.ok) {
           throw new Error(`Request failed with status ${response.status}`);
         }
-
         const raw = await response.json();
-        const features = raw.map((item: any) => ({
-          type: "Feature" as const,
-          id: item.id,
-          geometry: {
-            type: "Point" as const,
-            coordinates: [item.longitud, item.latitud] as [number, number],
-          },
-          properties: item,
-        }));
+
+        const alertsResults = await Promise.allSettled(
+          raw.map((item: any) =>
+            fetch(`http://localhost:8080/api/alerts/area/${encodeURIComponent(item.id)}`, { cache: "no-store" })
+              .then((r) => (r.ok ? (r.json() as Promise<AlertDto[]>) : []))
+              .catch(() => [] as AlertDto[])
+          )
+        );
+
+        const alertsByArea: Record<string, AlertDto[]> = {};
+        raw.forEach((item: any, idx: number) => {
+          const result = alertsResults[idx];
+          alertsByArea[item.id as string] = result.status === "fulfilled" ? (result.value as AlertDto[]) : [];
+        });
+
+        const features = raw.map((item: any) => {
+          const alerts: AlertDto[] = alertsByArea[item.id] ?? [];
+          return {
+            type: "Feature" as const,
+            id: item.id,
+            geometry: {
+              type: "Point" as const,
+              coordinates: [item.longitud, item.latitud] as [number, number],
+            },
+            properties: {
+              ...item,
+              alerts,
+              alertCount: alerts.filter((a) => !a.atendido).length,
+            },
+          };
+        });
 
         if (!isMounted) return;
 
@@ -328,9 +516,31 @@ export function ClusterExample() {
     return [totals.lng / coordinates.length, totals.lat / coordinates.length];
   }, [data]);
 
-  const sidebarPanelLeft = sidebarState === "collapsed" ? 47.2 : 255.2;
+  const alertAreas = useMemo<AlertArea[]>(() => {
+    if (!data) return [];
+    return data.features
+      .filter((f) => (f.properties.alertCount ?? 0) > 0)
+      .map((f) => ({
+        id: f.id as string | number,
+        name: f.properties.name_area ?? "Área",
+        alertCount: f.properties.alertCount ?? 0,
+        coordinates: f.geometry.coordinates as [number, number],
+      }));
+  }, [data]);
 
+  const sidebarPanelLeft = sidebarState === "collapsed" ? 47.2 : 255.2;
   const chartData = useMemo(() => (history ? prepareChartData(history) : []), [history]);
+
+  const allCoordinates = useMemo<[number, number][]>(
+    () => data?.features.map((f) => f.geometry.coordinates as [number, number]) ?? [],
+    [data]
+  );
+
+  const lastUpdate = useMemo(() => {
+    if (!history || history.length === 0) return null;
+    const lastHistoryItem = history[history.length - 1];
+    return lastHistoryItem?.fechaHora ? new Date(lastHistoryItem.fechaHora) : null;
+  }, [history]);
 
   const [isPanelVisible, setIsPanelVisible] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -347,6 +557,7 @@ export function ClusterExample() {
         setIsPanelVisible(false);
         lastSelectedPointRef.current = null;
         setHistory(null);
+        setSelectedPointAlerts([]);
       }, 200);
       return () => window.clearTimeout(timeout);
     }
@@ -408,6 +619,49 @@ export function ClusterExample() {
     return () => abortController.abort();
   }, [period, selectedPoint]);
 
+  useEffect(() => {
+    const id = selectedPoint?.id ?? lastSelectedPointRef.current?.id;
+    if (!id) {
+      setSelectedPointAlerts([]);
+      return;
+    }
+
+    const abortController = new AbortController();
+
+    fetch(`http://localhost:8080/api/alerts/area/${encodeURIComponent(id)}`, {
+      signal: abortController.signal,
+      cache: "no-store",
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Alerts fetch failed");
+        console.log("Raw alert response:", res);
+        return res.json();
+      })
+      .then((alertData) => {
+        setSelectedPointAlerts(Array.isArray(alertData) ? (alertData as AlertDto[]) : []);
+      })
+      .catch(() => {
+        if (!abortController.signal.aborted) setSelectedPointAlerts([]);
+      });
+
+    return () => abortController.abort();
+  }, [selectedPoint]);
+
+  
+
+  const handleMarkAtendido = async (alertId: string): Promise<void> => {
+    const id = String(alertId);
+    const res = await fetch(`http://localhost:8080/api/alerts/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ atendido: true }),
+    });
+    if (!res.ok) throw new Error(`PUT failed: ${res.status}`);
+    setSelectedPointAlerts((prev) =>
+      prev.map((a) => (String(a.id) === id ? { ...a, atendido: true } : a))
+    );
+  };
+
   if (isLoading) {
     return <div className="h-[400px] w-full flex items-center justify-center">Loading map data...</div>;
   }
@@ -429,13 +683,11 @@ export function ClusterExample() {
             });
 
             try {
-              console.log(feature)
               const id = feature.properties.id;
               if (id == null) return;
 
               const response = await fetch(`http://localhost:8080/api/areas/${id}`, { cache: "no-store" });
               if (!response.ok) return;
-
               const apiFeature = (await response.json()) as GeoJSON.Feature<GeoJSON.Geometry, AreaProperties>;
               const apiCoords =
                 apiFeature.geometry?.type === "Point" &&
@@ -444,11 +696,13 @@ export function ClusterExample() {
                 typeof apiFeature.geometry.coordinates[1] === "number"
                   ? (apiFeature.geometry.coordinates as [number, number])
                   : coordinates;
-
               setSelectedPoint({
                 id: apiFeature.id ?? feature.id,
                 coordinates: apiCoords,
-                properties: apiFeature.properties ?? feature.properties,
+                properties: {
+                  ...feature.properties,
+                  ...(apiFeature.properties ?? {}),
+                },
                 history: (apiFeature.properties as any)?.history ?? undefined,
               });
             } catch {
@@ -457,35 +711,36 @@ export function ClusterExample() {
           }}
         />
 
-        {selectedPoint && (
+        {displayedPoint && (
           <MapPopup
-            key={`${selectedPoint.coordinates[0]}-${selectedPoint.coordinates[1]}`}
-            longitude={selectedPoint.coordinates[0]}
-            latitude={selectedPoint.coordinates[1]}
-            onClose={() => setSelectedPoint(null)}
+            key={`${displayedPoint.coordinates[0]}-${displayedPoint.coordinates[1]}`}
+            longitude={displayedPoint.coordinates[0]}
+            latitude={displayedPoint.coordinates[1]}
+            onClose={() => isPointSelected && setSelectedPoint(null)}
             closeOnClick={false}
             focusAfterOpen={false}
-            closeButton
+            closeButton={isPointSelected}
+            
           >
-            <div className="space-y-1 p-1">
+            <div className="space-y-1 p-1" onMouseEnter={() => setHoveredPoint(hoveredPoint)} onMouseLeave={() => !isPointSelected && setHoveredPoint(null)}>
               <p className="text-sm font-medium">
-                {selectedPoint.properties.name_area ?? "Area"}
+                {displayedPoint.properties.name_area ?? "Area"}
               </p>
-              <p className="text-sm">Cultivo: {selectedPoint.properties.cultivo ?? "N/A"}</p>
+              <p className="text-sm">Cultivo: {displayedPoint.properties.tipo_cultivo ?? "N/A"}</p>
               <p className="text-sm">
-                Superficie (ha): {selectedPoint.properties.general?.superficie_ha ?? "N/A"}
+                Superficie (ha): {displayedPoint.properties.superficie_ha ?? "N/A"}
               </p>
               <p className="text-sm">
                 Última actualización:{" "}
-                {selectedPoint.properties.last_updated
-                  ? new Date(selectedPoint.properties.last_updated).toLocaleString()
-                  : "N/A"}
+                {lastUpdate ? lastUpdate.toLocaleString() : "N/A"}
               </p>
             </div>
           </MapPopup>
         )}
 
+        <MapFitBounds coordinates={allCoordinates} />
         <MapControls />
+        <MapAlertStrip alertAreas={alertAreas} leftOffset={sidebarPanelLeft + (isPanelOpen ? 320 : 0)} />
       </Map>
 
       {isPanelVisible && (
@@ -502,12 +757,14 @@ export function ClusterExample() {
 
             return (
               <ResumeSidebar
+                id={panelPoint.id}
                 properties={panelPoint.properties}
+                alerts={selectedPointAlerts}
                 chartData={chartData}
                 historyLoading={historyLoading}
                 period={period}
                 onChangePeriod={setPeriod}
-                onClose={() => setSelectedPoint(null)}
+                onMarkAtendido={handleMarkAtendido}
               />
             );
           })()}

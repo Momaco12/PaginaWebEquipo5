@@ -1285,7 +1285,14 @@ function MapClusterLayer<
       source: sourceId,
       filter: ["!", ["has", "point_count"]],
       paint: {
-        "circle-color": pointColor,
+        "circle-color": [
+          "case",
+          [">=", ["get", "alertCount"], 3],
+          "#dc2626",
+          [">=", ["get", "alertCount"], 1],
+          "#f59e0b",
+          pointColor,
+        ],
         "circle-radius": 5,
         "circle-stroke-width": 2,
         "circle-stroke-color": "#fff",
@@ -1350,7 +1357,14 @@ function MapClusterLayer<
 
     // Update unclustered point layer color
     if (map.getLayer(unclusteredLayerId) && prev.pointColor !== pointColor) {
-      map.setPaintProperty(unclusteredLayerId, "circle-color", pointColor);
+      map.setPaintProperty(unclusteredLayerId, "circle-color", [
+        "case",
+        [">=", ["get", "alertCount"], 3],
+        "#dc2626",
+        [">=", ["get", "alertCount"], 1],
+        "#f59e0b",
+        pointColor,
+      ]);
     }
 
     stylePropsRef.current = { clusterColors, clusterThresholds, pointColor };

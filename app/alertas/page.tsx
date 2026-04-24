@@ -1,166 +1,139 @@
-'use client'
-import React from 'react'
-import { mockAlerts, Alert } from '@/lib/mockAlerts'
-import { Bell, MapPin, Clock, Settings } from 'lucide-react'
-import Link from 'next/link'
+"use client";
 
-// --- FUNCIONES DE ESTILO (Tu lógica original intacta) ---
-const getAlertStyle = (type: Alert['type']) => {
-    switch (type) {
-        case 'critical': return { backgroundColor: '#fff0f0', borderColor: '#f5c6c6' }
-        case 'warning':  return { backgroundColor: '#fffde7', borderColor: '#f5e6a3' }
-        default:         return { backgroundColor: '#f0f4ff', borderColor: '#c6d4f5' }
-    }
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { AlertTriangle, Bell, Leaf } from "lucide-react";
+import { type AlertDto } from "@/components/ui/clusterexample";
+
+interface AreaSummary {
+  id: string | number;
+  name_area?: string;
+  tipo_cultivo?: string;
+  activeCount: number;
+  mostRecentActive?: AlertDto;
+  mostRecentAttended?: AlertDto;
 }
 
-const getPriorityStyle = (priority: Alert['priority']) => {
-    switch (priority) {
-        case 'Alta':  return { backgroundColor: '#fff0f0', color: '#c0392b' }
-        case 'Media': return { backgroundColor: '#fff8e1', color: '#e67e22' }
-        default:      return { backgroundColor: '#f0f4ff', color: '#2980b9' }
-    }
+function formatDate(iso: string): string {
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return "Fecha inválida";
+  return date.toLocaleString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
-const getStatusStyle = (status: Alert['status']) => {
-    switch (status) {
-        case 'Nueva': return { backgroundColor: '#e8f5e9', color: '#e53935', dot: '#e53935' }
-        default:      return { backgroundColor: '#e8f0fe', color: '#1a73e8', dot: '#1a73e8' }
-    }
-}
+export default function AlertasPage() {
+  const [areas, setAreas] = useState<AreaSummary[]>([]);
+  const [loading, setLoading] = useState(true);
 
-const getIcon = (type: Alert['type']) => {
-    switch (type) {
-        case 'critical': return { symbol: '⚠', color: '#e53935' }
-        case 'warning':  return { symbol: '⊙', color: '#f59e0b' }
-        default:         return { symbol: 'ℹ', color: '#1a73e8' }
-    }
-}
+  useEffect(() => {
+    fetch("http://localhost:8080/api/areas", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : []))
+      .catch(() => [])
+      .then(async (raw: any[]) => {
+        const alertsResults = await Promise.allSettled(
+          raw.map((item) =>
+            fetch(`http://localhost:8080/api/alerts/area/${encodeURIComponent(item.id)}`, { cache: "no-store" })
+              .then((r) => (r.ok ? (r.json() as Promise<AlertDto[]>) : []))
+              .catch(() => [] as AlertDto[])
+          )
+        );
 
-export default function AlertsPage() {
-    const alerts = mockAlerts
+        const byDateDesc = (a: AlertDto, b: AlertDto) =>
+          new Date(b.fechaHora).getTime() - new Date(a.fechaHora).getTime();
 
-    // FILTROS: Mantenemos la lógica de conteo que ya tenías
-    const nuevas       = alerts.filter(a => a.status === 'Nueva').length
-    const criticas     = alerts.filter(a => (a.type as string) === 'critical').length
-    const advertencias = alerts.filter(a => (a.type as string) === 'warning').length
+        const summaries: AreaSummary[] = raw.map((item, idx) => {
+          const alerts: AlertDto[] =
+            alertsResults[idx].status === "fulfilled" ? alertsResults[idx].value : [];
+          const active = alerts.filter((a) => !a.atendido);
+          const attended = alerts.filter((a) => a.atendido);
+          return {
+            id: item.id,
+            name_area: item.name_area,
+            tipo_cultivo: item.tipo_cultivo,
+            activeCount: active.length,
+            mostRecentActive: [...active].sort(byDateDesc)[0],
+            mostRecentAttended: [...attended].sort(byDateDesc)[0],
+          };
+        });
 
+        setAreas(summaries);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
     return (
-        <div style={{ padding: '2rem', marginLeft: '3rem' }}>
+      <div className="flex h-full items-center justify-center text-slate-500">
+        Cargando alertas…
+      </div>
+    );
+  }
 
-            {/* ENCABEZADO */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Bell size={24} color="#e53935" />
-                    <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 700 }}>Alertas</h1>
-                </div>
-                
-                {/* BOTÓN DE SETTINGS: Ahora es un Link a la página global /settings */}
-                <Link href="/settings">
-                    <button 
-                        style={{
-                            background: '#f0f0f0',
-                            border: 'none',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            padding: '8px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            transition: 'background 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = '#e0e0e0'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = '#f0f0f0'}
-                    >
-                        <Settings size={24} color="#666" />
-                    </button>
-                </Link>
-            </div>
+  const totalActive = areas.reduce((s, a) => s + a.activeCount, 0);
+  const areasWithAlerts = areas.filter((a) => a.activeCount > 0).length;
 
-            <p style={{ margin: '0 0 1.5rem', color: '#666', fontSize: '0.9rem' }}>
-                {alerts.length} alertas encontradas
-            </p>
-
-            {/* Cards de resumen */}
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
-                {[
-                    { label: 'Nuevas',       count: nuevas,       color: '#e53935' },
-                    { label: 'Críticas',     count: criticas,     color: '#e53935' },
-                    { label: 'Advertencias', count: advertencias, color: '#f59e0b' },
-                ].map(card => (
-                    <div key={card.label} style={{
-                        border: '1px solid #e0e0e0',
-                        borderRadius: '8px',
-                        padding: '0.75rem 1rem',
-                        minWidth: '100px',
-                        boxSizing: 'border-box',
-                    }}>
-                        <p style={{ margin: '0 0 0.4rem', fontSize: '0.8rem', color: '#888' }}>{card.label}</p>
-                        <p style={{ margin: 0, fontSize: '1.6rem', fontWeight: 700, color: card.color }}>{card.count}</p>
-                    </div>
-                ))}
-            </div>
-
-            {/* Lista de alertas */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {alerts.map(alert => {
-                    const icon       = getIcon(alert.type)
-                    const statusSt   = getStatusStyle(alert.status)
-                    const prioritySt = getPriorityStyle(alert.priority)
-
-                    return (
-                        <div key={alert.id} style={{
-                            ...getAlertStyle(alert.type),
-                            border: '1px solid',
-                            borderRadius: '12px',
-                            padding: '1.25rem',
-                            boxSizing: 'border-box',
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                <span style={{ color: icon.color, fontSize: '1.1rem' }}>{icon.symbol}</span>
-                                <strong style={{ fontSize: '1rem' }}>{alert.title}</strong>
-                                <span style={{
-                                    ...statusSt,
-                                    fontSize: '0.75rem',
-                                    padding: '2px 10px',
-                                    borderRadius: '999px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                }}>
-                                    <span style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: statusSt.dot, display: 'inline-block' }} />
-                                    {alert.status}
-                                </span>
-                            </div>
-
-                            <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#444', lineHeight: 1.5 }}>
-                                {alert.message}
-                            </p>
-
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.8rem', color: '#666', marginBottom: '0.75rem' }}>
-                                <MapPin size={14} />  {alert.area}
-                                <Clock size={14} />   {alert.time}
-                                <span style={{
-                                    ...prioritySt,
-                                    padding: '2px 8px',
-                                    borderRadius: '999px',
-                                    fontWeight: 600,
-                                }}>
-                                    {alert.priority}
-                                </span>
-                            </div>
-
-                            <span style={{
-                                backgroundColor: '#e8f0fe',
-                                color: '#1a73e8',
-                                fontSize: '0.78rem',
-                                padding: '3px 12px',
-                                borderRadius: '999px',
-                            }}>
-                                {alert.category}
-                            </span>
-                        </div>
-                    )
-                })}
-            </div>
+  return (
+    <div className="h-full overflow-auto p-6">
+      <div className="mb-6">
+        <div className="flex items-center gap-2">
+          <Bell className="h-6 w-6 text-red-500" />
+          <h1 className="text-2xl font-bold text-slate-900">Alertas</h1>
         </div>
-    )
+        <p className="mt-1 text-sm text-slate-500">
+          {totalActive > 0
+            ? `${totalActive} alerta${totalActive === 1 ? "" : "s"} activa${totalActive === 1 ? "" : "s"} en ${areasWithAlerts} área${areasWithAlerts === 1 ? "" : "s"}`
+            : "Sin alertas activas"}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {areas.map((area) => (
+          <Link key={area.id} href={`/alertas/${area.id}`} className="block">
+            <div className="group rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+                  <Leaf className="h-5 w-5" />
+                </div>
+                {area.activeCount > 0 ? (
+                  <div className="flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700">
+                    <AlertTriangle className="h-3 w-3" />
+                    {area.activeCount} pendiente{area.activeCount === 1 ? "" : "s"}
+                  </div>
+                ) : (
+                  <div className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                    Sin alertas activas
+                  </div>
+                )}
+              </div>
+
+              <h2 className="mt-3 font-semibold text-slate-900 group-hover:text-slate-700">
+                {area.name_area ?? "Área sin nombre"}
+              </h2>
+              <p className="text-sm text-slate-500">{area.tipo_cultivo ?? "Cultivo desconocido"}</p>
+
+              <p className="mt-2 text-xs text-slate-400">
+                {area.activeCount > 0 && area.mostRecentActive ? (
+                  <>
+                    Último:{" "}
+                    <span className="font-medium text-slate-600">
+                      {area.mostRecentActive.tipoAlerta}
+                    </span>
+                  </>
+                ) : area.mostRecentAttended ? (
+                  <>Atendida: {formatDate(area.mostRecentAttended.fechaHora)}</>
+                ) : (
+                  "Sin alertas registradas"
+                )}
+              </p>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
 }
