@@ -244,7 +244,8 @@ function ResumeSidebar({
       </div>
 
       <div className="flex flex-col gap-3 rounded-3xl bg-slate-50 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Row 1: label + day/week/month toggle */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Periodo</p>
             <p className="mt-1 text-sm font-semibold text-slate-900">
@@ -267,38 +268,42 @@ function ResumeSidebar({
                 {p === "day" ? "Día" : p === "week" ? "Semana" : "Mes"}
               </button>
             ))}
-            {onChangeCustomDateRange && (
-              <CalendarDatePicker
-                date={customDateRange ?? { from: new Date(), to: new Date() }}
-                onDateSelect={(range) => {
-                  onChangeCustomDateRange(range);
-                  onChangePeriod("custom");
-                }}
-                variant="outline"
-                className={
-                  "rounded-full px-3 py-1 text-xs font-semibold transition h-auto border-none " +
-                  (period === "custom"
-                    ? "bg-slate-900 text-white hover:bg-slate-800 hover:text-white"
-                    : "bg-white text-slate-600 shadow-sm hover:bg-slate-100")
-                }
-              />
-            )}
-            <button
-              type="button"
-              disabled={historyLoading || chartData.length === 0}
-              onClick={() =>
-                exportChartDataToCsv(
-                  chartData,
-                  `telemetria-${properties.name_area ?? "area"}-${period}.csv`
-                )
-              }
-              className="rounded-full px-3 py-1 text-xs font-semibold transition bg-white text-slate-600 shadow-sm hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
-            >
-              <Download className="h-3 w-3" />
-              Descargar datos a CSV
-            </button>
           </div>
         </div>
+
+        {/* Row 2: custom date picker — full width so long date text never overflows */}
+        {onChangeCustomDateRange && (
+          <CalendarDatePicker
+            date={customDateRange ?? { from: new Date(), to: new Date() }}
+            onDateSelect={(range) => {
+              onChangeCustomDateRange(range);
+              onChangePeriod("custom");
+            }}
+            variant="outline"
+            className={
+              "w-full justify-start rounded-2xl px-3 py-2 text-xs font-semibold transition h-auto border-none " +
+              (period === "custom"
+                ? "bg-slate-900 text-white hover:bg-slate-800 hover:text-white"
+                : "bg-white text-slate-600 shadow-sm hover:bg-slate-100")
+            }
+          />
+        )}
+
+        {/* Row 3: download — full width, consistent with picker row */}
+        <button
+          type="button"
+          disabled={historyLoading || chartData.length === 0}
+          onClick={() =>
+            exportChartDataToCsv(
+              chartData,
+              `telemetria-${properties.name_area ?? "area"}-${period}.csv`
+            )
+          }
+          className="w-full justify-start rounded-2xl px-3 py-2 text-xs font-semibold transition bg-white text-slate-600 shadow-sm hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+        >
+          <Download className="h-3 w-3" />
+          Descargar datos a CSV
+        </button>
       </div>
 
       <TelemetryChart chartData={chartData} historyLoading={historyLoading} />
