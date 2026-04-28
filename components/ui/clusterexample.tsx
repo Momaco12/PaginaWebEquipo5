@@ -295,7 +295,7 @@ function ResumeSidebar({
               className="rounded-full px-3 py-1 text-xs font-semibold transition bg-white text-slate-600 shadow-sm hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
             >
               <Download className="h-3 w-3" />
-              CSV
+              Descargar datos a CSV
             </button>
           </div>
         </div>
