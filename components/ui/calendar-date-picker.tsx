@@ -426,7 +426,7 @@ export const CalendarDatePicker = React.forwardRef<
           <SelectTrigger className="h-10 flex-1 text-sm focus:ring-0 focus:ring-offset-0">
             <SelectValue placeholder="HH" />
           </SelectTrigger>
-          <SelectContent className="max-h-[200px]">
+          <SelectContent position="popper" className="max-h-[200px] z-[300]">
             {hours12.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -438,7 +438,7 @@ export const CalendarDatePicker = React.forwardRef<
           <SelectTrigger className="h-10 flex-1 text-sm focus:ring-0 focus:ring-offset-0">
             <SelectValue placeholder="MM" />
           </SelectTrigger>
-          <SelectContent className="max-h-[200px]">
+          <SelectContent position="popper" className="max-h-[200px] z-[300]">
             {minutes.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -449,7 +449,7 @@ export const CalendarDatePicker = React.forwardRef<
           <SelectTrigger className="h-10 w-[72px] text-sm focus:ring-0 focus:ring-offset-0">
             <SelectValue placeholder="AM/PM" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent position="popper" className="z-[300]">
             {ampm.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
           </SelectContent>
         </Select>
