@@ -42,21 +42,19 @@ export function MobileBottomSheet({
     onSnapChange?.(snap);
   }, [snap, onSnapChange]);
 
-  // Native non-passive listeners on the sheet root:
-  // - touchstart stopPropagation: MapLibre never sees touches that start on the sheet
-  // - touchmove preventDefault (non-passive): actually blocks browser pan during drags
-  //   (React's synthetic onTouchMove is passive and cannot call preventDefault)
+  // Native non-passive touchmove listener: allows e.preventDefault() to actually work
+  // during an active drag, blocking the browser's default scroll/pan behavior.
+  // React's synthetic onTouchMove is passive and silently ignores preventDefault().
+  // Note: no touchstart stopPropagation here — that would break React's synthetic
+  // event system since React 17+ dispatches from the root, above sheetRef.
   useEffect(() => {
     const el = sheetRef.current;
     if (!el) return;
-    const onTouchStart = (e: TouchEvent) => e.stopPropagation();
     const onTouchMove = (e: TouchEvent) => {
       if (isDragging.current) e.preventDefault();
     };
-    el.addEventListener("touchstart", onTouchStart);
     el.addEventListener("touchmove", onTouchMove, { passive: false });
     return () => {
-      el.removeEventListener("touchstart", onTouchStart);
       el.removeEventListener("touchmove", onTouchMove);
     };
   }, []);
@@ -107,7 +105,6 @@ export function MobileBottomSheet({
     beginDrag(e.touches[0].clientY);
   };
   const onHandleTouchMove = (e: React.TouchEvent) => {
-    e.preventDefault(); // prevent page scroll while dragging handle
     moveDrag(e.touches[0].clientY);
   };
   const onHandleTouchEnd = () => endDrag();
@@ -141,7 +138,6 @@ export function MobileBottomSheet({
     }
 
     if (bodyDragActive.current) {
-      e.preventDefault(); // block scroll while sheet is moving
       moveDrag(e.touches[0].clientY);
     }
   };
@@ -184,6 +180,7 @@ export function MobileBottomSheet({
         {/* ── Handle bar — touch here always drags the sheet ─────────────── */}
         <div
           className="flex items-center justify-between px-5 py-3 cursor-grab active:cursor-grabbing select-none"
+          style={{ touchAction: "none" }}
           onTouchStart={onHandleTouchStart}
           onTouchMove={onHandleTouchMove}
           onTouchEnd={onHandleTouchEnd}
