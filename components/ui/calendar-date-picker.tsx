@@ -499,7 +499,7 @@ export const CalendarDatePicker = React.forwardRef<
                 })}
               </div>
 
-              {/* Scrollable body: calendar + time pickers */}
+              {/* Scrollable body: calendar only — time pickers moved outside to avoid overflow clipping */}
               <div className="flex-1 overflow-y-auto">
                 <Calendar
                   mode="range"
@@ -510,64 +510,65 @@ export const CalendarDatePicker = React.forwardRef<
                   showOutsideDays={false}
                   className="w-full"
                 />
+              </div>
 
-                {pendingDate?.from && (
-                  <div className="space-y-3 border-t border-slate-100 px-4 py-4">
+              {/* Time pickers outside the scroll container so SelectContent is never clipped */}
+              {pendingDate?.from && (
+                <div className="shrink-0 space-y-3 border-t border-slate-100 px-4 py-4">
+                  <MobileTimePicker
+                    label="Inicio"
+                    value={pendingDate.from}
+                    onHourChange={(val) => {
+                      const d = new Date(pendingDate.from as Date);
+                      const isPM = d.getHours() >= 12;
+                      let h = parseInt(val);
+                      if (h === 12) h = 0;
+                      if (isPM) h += 12;
+                      d.setHours(h, d.getMinutes(), 0, 0);
+                      setPendingDate({ ...pendingDate, from: d });
+                    }}
+                    onMinuteChange={(val) => {
+                      const d = new Date(pendingDate.from as Date);
+                      d.setMinutes(parseInt(val), 0, 0);
+                      setPendingDate({ ...pendingDate, from: d });
+                    }}
+                    onAmPmChange={(val) => {
+                      const d = new Date(pendingDate.from as Date);
+                      const h = d.getHours();
+                      if (val === "AM" && h >= 12) d.setHours(h - 12);
+                      if (val === "PM" && h < 12) d.setHours(h + 12);
+                      setPendingDate({ ...pendingDate, from: d });
+                    }}
+                  />
+                  {pendingDate?.to && (
                     <MobileTimePicker
-                      label="Inicio"
-                      value={pendingDate.from}
+                      label="Fin"
+                      value={pendingDate.to}
                       onHourChange={(val) => {
-                        const d = new Date(pendingDate.from as Date);
+                        const d = new Date(pendingDate.to as Date);
                         const isPM = d.getHours() >= 12;
                         let h = parseInt(val);
                         if (h === 12) h = 0;
                         if (isPM) h += 12;
-                        d.setHours(h, d.getMinutes(), 0, 0);
-                        setPendingDate({ ...pendingDate, from: d });
+                        d.setHours(h, d.getMinutes(), 59, 999);
+                        setPendingDate({ ...pendingDate, to: d });
                       }}
                       onMinuteChange={(val) => {
-                        const d = new Date(pendingDate.from as Date);
-                        d.setMinutes(parseInt(val), 0, 0);
-                        setPendingDate({ ...pendingDate, from: d });
+                        const d = new Date(pendingDate.to as Date);
+                        d.setMinutes(parseInt(val), 59, 999);
+                        setPendingDate({ ...pendingDate, to: d });
                       }}
                       onAmPmChange={(val) => {
-                        const d = new Date(pendingDate.from as Date);
+                        const d = new Date(pendingDate.to as Date);
                         const h = d.getHours();
                         if (val === "AM" && h >= 12) d.setHours(h - 12);
                         if (val === "PM" && h < 12) d.setHours(h + 12);
-                        setPendingDate({ ...pendingDate, from: d });
+                        setPendingDate({ ...pendingDate, to: d });
                       }}
                     />
-                    {pendingDate?.to && (
-                      <MobileTimePicker
-                        label="Fin"
-                        value={pendingDate.to}
-                        onHourChange={(val) => {
-                          const d = new Date(pendingDate.to as Date);
-                          const isPM = d.getHours() >= 12;
-                          let h = parseInt(val);
-                          if (h === 12) h = 0;
-                          if (isPM) h += 12;
-                          d.setHours(h, d.getMinutes(), 59, 999);
-                          setPendingDate({ ...pendingDate, to: d });
-                        }}
-                        onMinuteChange={(val) => {
-                          const d = new Date(pendingDate.to as Date);
-                          d.setMinutes(parseInt(val), 59, 999);
-                          setPendingDate({ ...pendingDate, to: d });
-                        }}
-                        onAmPmChange={(val) => {
-                          const d = new Date(pendingDate.to as Date);
-                          const h = d.getHours();
-                          if (val === "AM" && h >= 12) d.setHours(h - 12);
-                          if (val === "PM" && h < 12) d.setHours(h + 12);
-                          setPendingDate({ ...pendingDate, to: d });
-                        }}
-                      />
-                    )}
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
               {/* Action bar */}
               <div

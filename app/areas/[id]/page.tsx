@@ -6,6 +6,7 @@ import Link from "next/link";
 import { AlertTriangle, ArrowLeft, Download, Leaf, MapPin, Square } from "lucide-react";
 import { type AlertDto } from "@/components/ui/clusterexample";
 import { TelemetryChart, prepareChartData, exportChartDataToCsv, type TelemetryPoint } from "@/components/ui/telemetry-chart";
+import { CalendarDatePicker } from "@/components/ui/calendar-date-picker";
 
 interface AreaDetail {
   id: string | number;
@@ -20,9 +21,9 @@ interface AreaDetail {
   [key: string]: unknown;
 }
 
-type Period = "day" | "week" | "month";
+type Period = "day" | "week" | "month" | "custom";
 
-const PERIOD_MS: Record<Period, number> = {
+const PERIOD_MS: Record<Exclude<Period, "custom">, number> = {
   day: 24 * 60 * 60 * 1000,
   week: 7 * 24 * 60 * 60 * 1000,
   month: 30 * 24 * 60 * 60 * 1000,
@@ -55,6 +56,7 @@ export default function AreaDetailPage() {
   const [history, setHistory] = useState<TelemetryPoint[] | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [period, setPeriod] = useState<Period>("day");
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>(undefined);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -75,13 +77,18 @@ export default function AreaDetailPage() {
 
   useEffect(() => {
     if (!id) return;
+    if (period === "custom" && !customDateRange) return;
+
     setHistoryLoading(true);
     const abort = new AbortController();
     const now = new Date();
-    const start = new Date(now.getTime() - PERIOD_MS[period]);
+    const start = period === "custom"
+      ? customDateRange!.from
+      : new Date(now.getTime() - PERIOD_MS[period]);
+    const end = period === "custom" ? customDateRange!.to : now;
 
     fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/analytics/area/${id}?start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(now.toISOString())}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/api/analytics/area/${id}?start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`,
       { signal: abort.signal, cache: "no-store" }
     )
       .then((r) => (r.ok ? r.json() : null))
@@ -90,7 +97,7 @@ export default function AreaDetailPage() {
       .finally(() => { if (!abort.signal.aborted) setHistoryLoading(false); });
 
     return () => abort.abort();
-  }, [id, period]);
+  }, [id, period, customDateRange]);
 
   const chartData = useMemo(
     () => (history ? prepareChartData(history as any, period) : []),
@@ -173,7 +180,7 @@ export default function AreaDetailPage() {
         <div>
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="font-semibold text-slate-900">Telemetría</h2>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {(["day", "week", "month"] as const).map((p) => (
                 <button
                   key={p}
@@ -189,6 +196,20 @@ export default function AreaDetailPage() {
                   {p}
                 </button>
               ))}
+              <CalendarDatePicker
+                date={customDateRange ?? { from: new Date(), to: new Date() }}
+                onDateSelect={(range) => {
+                  setCustomDateRange(range);
+                  setPeriod("custom");
+                }}
+                variant="outline"
+                className={
+                  "rounded-full px-3 py-1 text-xs font-semibold transition h-auto border-none " +
+                  (period === "custom"
+                    ? "bg-slate-900 text-white hover:bg-slate-800 hover:text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200")
+                }
+              />
               <button
                 type="button"
                 disabled={historyLoading || chartData.length === 0}
