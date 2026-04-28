@@ -78,7 +78,7 @@ export default function AlertasPage() {
   const areasWithAlerts = areas.filter((a) => a.activeCount > 0).length;
 
   return (
-    <div className="h-full overflow-auto p-6">
+    <div className="h-full overflow-auto bg-slate-50/50 p-6 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
       <div className="mb-6">
         <div className="flex items-center gap-2">
           <Bell className="h-6 w-6 text-red-500" />

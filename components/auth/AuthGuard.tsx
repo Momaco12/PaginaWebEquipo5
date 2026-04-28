@@ -25,11 +25,12 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="relative h-screen w-screen overflow-hidden">
-        <div className="absolute inset-0">{children}</div>
-
+      <div className="flex h-screen w-screen overflow-hidden">
         <AppSidebar />
-        <SidebarToggle />
+        <div className="relative flex-1 overflow-hidden transition-all duration-200 ease-linear">
+          <SidebarToggle />
+          {children}
+        </div>
       </div>
     </SidebarProvider>
   );

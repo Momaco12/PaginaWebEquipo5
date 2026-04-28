@@ -115,7 +115,7 @@ export default function AreaAlertasPage() {
   const pendingCount = alerts.filter((a) => !a.atendido).length;
 
   return (
-    <div className="h-full overflow-auto">
+    <div className="h-full overflow-auto bg-slate-50/50 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
       <div className="mx-auto max-w-3xl px-6 py-8 space-y-6">
 
         <Link
