@@ -76,7 +76,7 @@ export default function SettingsPanel({ onBack }: SettingsPanelProps) {
           </div>
           <div className="flex-1">
             <div className="font-semibold text-slate-800">Cambiar correo electrónico</div>
-            <div className="text-sm text-slate-400">juan.perez@agricola.mx</div>
+            <div className="text-sm text-slate-400">admin@itesm.mx</div>
           </div>
           <ChevronRight size={18} className="text-slate-300" />
         </div>

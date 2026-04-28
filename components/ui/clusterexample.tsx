@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, ArrowRight, Leaf, MapPin, Navigation2, Square } from "lucide-react";
 
 import { Map, MapClusterLayer, MapPopup, MapControls, useMap } from "@/components/ui/map";
 import { useSidebar } from "@/components/ui/sidebar";
 import { TelemetryChart, prepareChartData, FIELD_CONFIG, FieldKey } from "@/components/ui/telemetry-chart";
+import { CalendarDatePicker } from "@/components/ui/calendar-date-picker";
+import { MobileBottomSheet } from "@/components/ui/mobile-bottom-sheet";
+import { MobileAlertStrip, ALERT_STRIP_HEIGHT } from "@/components/ui/mobile-alert-strip";
+import { TAB_BAR_HEIGHT } from "@/components/ui/mobile-tab-bar";
+import { useAlertCount } from "@/components/ui/alert-count-provider";
 
 interface TelemetryData {
   fechaHora: string;
@@ -38,9 +43,8 @@ function getAlertDisplayHeader(alert: AlertDto): string {
 }
 
 function getAlertDisplayValue(alert: AlertDto) {
-  console.log("Alert for display value:", alert);
   const value =
-    alert.valor_reportado 
+    alert.valor_reportado
   
   if (value == null) return null;
   return value.toString();
@@ -203,6 +207,8 @@ function ResumeSidebar({
   historyLoading,
   period,
   onChangePeriod,
+  customDateRange,
+  onChangeCustomDateRange,
   onMarkAtendido,
 }: {
   id?: string | number;
@@ -210,8 +216,10 @@ function ResumeSidebar({
   alerts: AlertDto[];
   chartData: any[];
   historyLoading: boolean;
-  period: "day" | "week" | "month";
-  onChangePeriod: (period: "day" | "week" | "month") => void;
+  period: "day" | "week" | "month" | "custom";
+  onChangePeriod: (period: "day" | "week" | "month" | "custom") => void;
+  customDateRange?: { from: Date; to: Date };
+  onChangeCustomDateRange?: (range: { from: Date; to: Date }) => void;
   onMarkAtendido: (alertId: string) => Promise<void>;
 }) {
   const [markingIds, setMarkingIds] = useState<Set<string>>(new Set());
@@ -235,27 +243,47 @@ function ResumeSidebar({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-slate-50 p-4">
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Periodo</p>
-          <p className="mt-1 text-sm font-semibold text-slate-900">{period}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {(["day", "week", "month"] as const).map((p) => (
-            <button
-              key={p}
-              type="button"
-              className={
-                "rounded-full px-3 py-1 text-xs font-semibold transition " +
-                (period === p
-                  ? "bg-slate-900 text-white"
-                  : "bg-white text-slate-600 shadow-sm hover:bg-slate-100")
-              }
-              onClick={() => onChangePeriod(p)}
-            >
-              {p}
-            </button>
-          ))}
+      <div className="flex flex-col gap-3 rounded-3xl bg-slate-50 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Periodo</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900">
+              {period === "custom" ? "Personalizado" : period === "day" ? "Día" : period === "week" ? "Semana" : "Mes"}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {(["day", "week", "month"] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                className={
+                  "rounded-full px-3 py-1 text-xs font-semibold transition " +
+                  (period === p
+                    ? "bg-slate-900 text-white"
+                    : "bg-white text-slate-600 shadow-sm hover:bg-slate-100")
+                }
+                onClick={() => onChangePeriod(p)}
+              >
+                {p === "day" ? "Día" : p === "week" ? "Semana" : "Mes"}
+              </button>
+            ))}
+            {onChangeCustomDateRange && (
+              <CalendarDatePicker
+                date={customDateRange ?? { from: new Date(), to: new Date() }}
+                onDateSelect={(range) => {
+                  onChangeCustomDateRange(range);
+                  onChangePeriod("custom");
+                }}
+                variant="outline"
+                className={
+                  "rounded-full px-3 py-1 text-xs font-semibold transition h-auto border-none " +
+                  (period === "custom"
+                    ? "bg-slate-900 text-white hover:bg-slate-800 hover:text-white"
+                    : "bg-white text-slate-600 shadow-sm hover:bg-slate-100")
+                }
+              />
+            )}
+          </div>
         </div>
       </div>
 
@@ -403,6 +431,7 @@ function ResumeSidebar({
 
 export function ClusterExample() {
   const { state: sidebarState } = useSidebar();
+  const { setTotalAlertCount } = useAlertCount();
 
   const [data, setData] = useState<GeoJSON.FeatureCollection<GeoJSON.Point, AreaProperties> | null>(null);
   const [selectedPoint, setSelectedPoint] = useState<{
@@ -416,11 +445,51 @@ export function ClusterExample() {
     properties: AreaProperties;
   } | null>(null);
   const [selectedPointAlerts, setSelectedPointAlerts] = useState<AlertDto[]>([]);
-  const [period, setPeriod] = useState<"day" | "week" | "month">("day");
+  const [period, setPeriod] = useState<"day" | "week" | "month" | "custom">("day");
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>(undefined);
   const [history, setHistory] = useState<TelemetryData[] | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const lastSelectedPointRef = useRef<typeof selectedPoint>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
+
+  // Detect mobile viewport
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  // Open mobile sheet when a point is selected
+  useEffect(() => {
+    if (selectedPoint && isMobile) {
+      setIsMobileSheetOpen(true);
+    }
+  }, [selectedPoint, isMobile]);
+
+  useEffect(() => {
+    if (period === "custom") return;
+
+    const now = new Date();
+    let start: Date;
+
+    switch (period) {
+      case "week":
+        start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case "month":
+        start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case "day":
+      default:
+        start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+    }
+
+    setCustomDateRange({ from: start, to: now });
+  }, [period]);
 
   // Determine which point to display in popup and if it's selected
   const displayedPoint = selectedPoint ?? hoveredPoint;
@@ -528,6 +597,11 @@ export function ClusterExample() {
       }));
   }, [data]);
 
+  useEffect(() => {
+    const total = alertAreas.reduce((sum, a) => sum + a.alertCount, 0);
+    setTotalAlertCount(total);
+  }, [alertAreas, setTotalAlertCount]);
+
   const sidebarPanelLeft = sidebarState === "collapsed" ? 47.2 : 255.2;
   const chartData = useMemo(() => (history ? prepareChartData(history) : []), [history]);
 
@@ -570,11 +644,17 @@ export function ClusterExample() {
       return;
     }
 
+    if (period === "custom" && !customDateRange) {
+      return;
+    }
+
     setHistoryLoading(true);
     const abortController = new AbortController();
 
     const now = new Date();
     let start: Date;
+    let end: Date = now;
+    
     switch (period) {
       case "week":
         start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -582,13 +662,21 @@ export function ClusterExample() {
       case "month":
         start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         break;
+      case "custom":
+        if (customDateRange) {
+          start = customDateRange.from;
+          end = customDateRange.to;
+        } else {
+          start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        }
+        break;
       default:
         start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
         break;
     }
 
     const startStr = start.toISOString();
-    const endStr = now.toISOString();
+    const endStr = end.toISOString();
 
     fetch(`http://localhost:8080/api/analytics/area/${id}?start=${encodeURIComponent(startStr)}&end=${encodeURIComponent(endStr)}`, {
       signal: abortController.signal,
@@ -617,7 +705,7 @@ export function ClusterExample() {
       });
 
     return () => abortController.abort();
-  }, [period, selectedPoint]);
+  }, [period, selectedPoint, customDateRange]);
 
   useEffect(() => {
     const id = selectedPoint?.id ?? lastSelectedPointRef.current?.id;
@@ -740,10 +828,18 @@ export function ClusterExample() {
 
         <MapFitBounds coordinates={allCoordinates} />
         <MapControls />
-        <MapAlertStrip alertAreas={alertAreas} leftOffset={sidebarPanelLeft + (isPanelOpen ? 320 : 0)} />
+        {/* Alert strip: desktop only */}
+        {!isMobile && (
+          <MapAlertStrip alertAreas={alertAreas} leftOffset={sidebarPanelLeft + (isPanelOpen ? 320 : 0)} />
+        )}
+        {/* Alert strip: mobile only — pinned above the tab bar */}
+        {isMobile && alertAreas.length > 0 && (
+          <MobileAlertStrip alertAreas={alertAreas} />
+        )}
       </Map>
 
-      {isPanelVisible && (
+      {/* Desktop right-side panel — hidden on mobile */}
+      {!isMobile && isPanelVisible && (
         <aside
           className={
             "fixed top-0 bottom-0 z-5 w-80 overflow-auto border-l border-muted/30 bg-white/90 p-4 text-sm backdrop-blur dark:border-slate-700 dark:bg-slate-950/80 transition-transform duration-200"
@@ -764,12 +860,58 @@ export function ClusterExample() {
                 historyLoading={historyLoading}
                 period={period}
                 onChangePeriod={setPeriod}
+                customDateRange={customDateRange}
+                onChangeCustomDateRange={setCustomDateRange}
                 onMarkAtendido={handleMarkAtendido}
               />
             );
           })()}
         </aside>
       )}
+
+      {/* Mobile: Google Maps-style bottom sheet */}
+      {isMobile && (() => {
+        const panelPoint = selectedPoint ?? lastSelectedPointRef.current;
+        if (!panelPoint) return null;
+        return (
+          <MobileBottomSheet
+            isOpen={isMobileSheetOpen}
+            onClose={() => {
+              setIsMobileSheetOpen(false);
+              setSelectedPoint(null);
+            }}
+            bottomOffset={TAB_BAR_HEIGHT + (alertAreas.length > 0 ? ALERT_STRIP_HEIGHT : 0)}
+            peekContent={
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                  <Leaf className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-900">
+                    {panelPoint.properties.name_area ?? "Área"}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {panelPoint.properties.tipo_cultivo ?? "Cultivo desconocido"}
+                  </p>
+                </div>
+              </div>
+            }
+          >
+            <ResumeSidebar
+              id={panelPoint.id}
+              properties={panelPoint.properties}
+              alerts={selectedPointAlerts}
+              chartData={chartData}
+              historyLoading={historyLoading}
+              period={period}
+              onChangePeriod={setPeriod}
+              customDateRange={customDateRange}
+              onChangeCustomDateRange={setCustomDateRange}
+              onMarkAtendido={handleMarkAtendido}
+            />
+          </MobileBottomSheet>
+        );
+      })()}
     </div>
   );
 }
