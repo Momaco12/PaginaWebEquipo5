@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, Leaf, MapPin, Navigation2, Square } from "lucide-react";
+import { AlertTriangle, ArrowRight, Download, Leaf, MapPin, Navigation2, Square } from "lucide-react";
 
 import { Map, MapClusterLayer, MapPopup, MapControls, useMap } from "@/components/ui/map";
 import { useSidebar } from "@/components/ui/sidebar";
-import { TelemetryChart, prepareChartData, FIELD_CONFIG, FieldKey } from "@/components/ui/telemetry-chart";
+import { TelemetryChart, prepareChartData, exportChartDataToCsv, FIELD_CONFIG, FieldKey } from "@/components/ui/telemetry-chart";
 import { CalendarDatePicker } from "@/components/ui/calendar-date-picker";
 import { MobileBottomSheet } from "@/components/ui/mobile-bottom-sheet";
 import { MobileAlertStrip, ALERT_STRIP_HEIGHT } from "@/components/ui/mobile-alert-strip";
@@ -283,6 +283,20 @@ function ResumeSidebar({
                 }
               />
             )}
+            <button
+              type="button"
+              disabled={historyLoading || chartData.length === 0}
+              onClick={() =>
+                exportChartDataToCsv(
+                  chartData,
+                  `telemetria-${properties.name_area ?? "area"}-${period}.csv`
+                )
+              }
+              className="rounded-full px-3 py-1 text-xs font-semibold transition bg-white text-slate-600 shadow-sm hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+            >
+              <Download className="h-3 w-3" />
+              CSV
+            </button>
           </div>
         </div>
       </div>

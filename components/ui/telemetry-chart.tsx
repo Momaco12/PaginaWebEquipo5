@@ -32,6 +32,21 @@ export interface TelemetryPoint {
   conductividadSuelo: number | null;
 }
 
+export function exportChartDataToCsv(data: TelemetryPoint[], filename = "telemetria.csv"): void {
+  const header = ["Hora", ...FIELD_CONFIG.map((f) => `${f.label} (${f.unit})`)].join(",");
+  const rows = data.map((row) =>
+    [row.time, ...FIELD_CONFIG.map((f) => row[f.key] ?? "")].join(",")
+  );
+  const csv = [header, ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function prepareChartData(
   telemetryArray: Array<{
     fechaHora: string;

@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { AlertTriangle, ArrowLeft, Leaf, MapPin, Square } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Download, Leaf, MapPin, Square } from "lucide-react";
 import { type AlertDto } from "@/components/ui/clusterexample";
-import { TelemetryChart, prepareChartData, type TelemetryPoint } from "@/components/ui/telemetry-chart";
+import { TelemetryChart, prepareChartData, exportChartDataToCsv, type TelemetryPoint } from "@/components/ui/telemetry-chart";
 
 interface AreaDetail {
   id: string | number;
@@ -189,6 +189,20 @@ export default function AreaDetailPage() {
                   {p}
                 </button>
               ))}
+              <button
+                type="button"
+                disabled={historyLoading || chartData.length === 0}
+                onClick={() =>
+                  exportChartDataToCsv(
+                    chartData,
+                    `telemetria-${area.name_area ?? "area"}-${period}.csv`
+                  )
+                }
+                className="rounded-full px-3 py-1 text-xs font-semibold transition bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+              >
+                <Download className="h-3 w-3" />
+                CSV
+              </button>
             </div>
           </div>
           <TelemetryChart chartData={chartData} historyLoading={historyLoading} chartHeight={240} />
