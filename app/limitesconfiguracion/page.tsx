@@ -7,8 +7,8 @@ import { FIELD_CONFIG, FieldKey } from "@/components/ui/telemetry-chart";
 
 interface Area {
   id: string;
-  name_area?: string;
-  tipo_cultivo?: string;
+  name?: string;
+  cropType?: string;
 }
 
 interface LimitConfiguration {
@@ -44,8 +44,8 @@ export default function LimitesConfiguracionPage() {
         setAreas(
           raw.map((item) => ({
             id: String(item.id),
-            name_area: item.name_area,
-            tipo_cultivo: item.tipo_cultivo,
+            name: item.name,
+            cropType: item.cropType,
           }))
         );
       });
@@ -157,8 +157,8 @@ export default function LimitesConfiguracionPage() {
             <option value="">Selecciona un área...</option>
             {areas.map((area) => (
               <option key={area.id} value={area.id}>
-                {area.name_area ?? area.id}
-                {area.tipo_cultivo ? ` — ${area.tipo_cultivo}` : ""}
+                {area.name ?? area.id}
+                {area.cropType ? ` — ${area.cropType}` : ""}
               </option>
             ))}
           </select>
