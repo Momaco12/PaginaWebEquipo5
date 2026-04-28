@@ -773,10 +773,12 @@ export function ClusterExample() {
   }
 
   return (
-    <div
-      className="h-full w-full"
-      style={isMobile && mobileSnap === "expanded" ? { pointerEvents: "none" } : undefined}
-    >
+    <div className="h-full w-full">
+      {/* Map wrapped in its own div so pointer-events:none only blocks the map, not the sheet */}
+      <div
+        className="h-full w-full"
+        style={isMobile && mobileSnap === "expanded" ? { pointerEvents: "none" } : undefined}
+      >
       <Map center={mapCenter} zoom={8} fadeDuration={0} theme="light">
         <MapClusterLayer<AreaProperties>
           data={data ?? { type: "FeatureCollection", features: [] }}
@@ -858,6 +860,7 @@ export function ClusterExample() {
           <MobileAlertStrip alertAreas={alertAreas} />
         )}
       </Map>
+      </div>
 
       {/* Desktop right-side panel — hidden on mobile */}
       {!isMobile && isPanelVisible && (
