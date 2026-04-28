@@ -618,7 +618,10 @@ export function ClusterExample() {
   }, [alertAreas, setTotalAlertCount]);
 
   const sidebarPanelLeft = sidebarState === "collapsed" ? 47.2 : 255.2;
-  const chartData = useMemo(() => (history ? prepareChartData(history) : []), [history]);
+  const chartData = useMemo(
+    () => (history ? prepareChartData(history, period) : []),
+    [history, period]
+  );
 
   const allCoordinates = useMemo<[number, number][]>(
     () => data?.features.map((f) => f.geometry.coordinates as [number, number]) ?? [],

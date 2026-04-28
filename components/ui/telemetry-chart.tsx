@@ -47,6 +47,29 @@ export function exportChartDataToCsv(data: TelemetryPoint[], filename = "telemet
   URL.revokeObjectURL(url);
 }
 
+const DAY_MS = 86_400_000;
+
+function formatTickLabel(date: Date, period?: string, spanMs?: number): string {
+  const time = date.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+  const dayAbbrev = date.toLocaleDateString("es-ES", { weekday: "short" }).replace(".", "");
+  const dayMonth = date.toLocaleDateString("es-ES", { day: "2-digit", month: "short" }).replace(".", "");
+
+  switch (period) {
+    case "week":
+      return `${dayAbbrev} ${time}`;
+    case "month":
+      return dayMonth;
+    case "custom": {
+      const span = spanMs ?? 0;
+      if (span <= DAY_MS) return time;
+      if (span <= 14 * DAY_MS) return `${dayAbbrev} ${time}`;
+      return dayMonth;
+    }
+    default:
+      return time;
+  }
+}
+
 export function prepareChartData(
   telemetryArray: Array<{
     fechaHora: string;
@@ -56,11 +79,18 @@ export function prepareChartData(
     evapotranspiracion?: number;
     consumoAgua?: number;
     conductividadSuelo?: number;
-  }>
+  }>,
+  period?: "day" | "week" | "month" | "custom"
 ): TelemetryPoint[] {
+  const spanMs =
+    period === "custom" && telemetryArray.length > 1
+      ? new Date(telemetryArray[telemetryArray.length - 1].fechaHora).getTime() -
+        new Date(telemetryArray[0].fechaHora).getTime()
+      : 0;
+
   return telemetryArray.map((item) => {
     const date = new Date(item.fechaHora);
-    const timeStr = date.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+    const timeStr = formatTickLabel(date, period, spanMs);
     return {
       time: timeStr,
       humedadSuelo: item.humedadSuelo ?? null,

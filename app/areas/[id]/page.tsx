@@ -93,8 +93,8 @@ export default function AreaDetailPage() {
   }, [id, period]);
 
   const chartData = useMemo(
-    () => (history ? prepareChartData(history as any) : []),
-    [history]
+    () => (history ? prepareChartData(history as any, period) : []),
+    [history, period]
   );
 
   if (loading) {
