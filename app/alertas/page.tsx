@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, Bell, Leaf } from "lucide-react";
+import { AlertTriangle, Bell, Leaf, SlidersHorizontal } from "lucide-react";
 import { type AlertDto } from "@/components/ui/clusterexample";
 
 interface AreaSummary {
@@ -80,9 +80,18 @@ export default function AlertasPage() {
   return (
     <div className="h-full overflow-auto bg-slate-50/50 p-6 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
       <div className="mb-6">
-        <div className="flex items-center gap-2">
-          <Bell className="h-6 w-6 text-red-500" />
-          <h1 className="text-2xl font-bold text-slate-900">Alertas</h1>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Bell className="h-6 w-6 text-red-500" />
+            <h1 className="text-2xl font-bold text-slate-900">Alertas</h1>
+          </div>
+          <Link
+            href="/limitesconfiguracion"
+            className="flex items-center gap-2 rounded-full bg-white border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:shadow-md"
+          >
+            <SlidersHorizontal className="h-4 w-4 text-slate-500" />
+            Configurar límites
+          </Link>
         </div>
         <p className="mt-1 text-sm text-slate-500">
           {totalActive > 0

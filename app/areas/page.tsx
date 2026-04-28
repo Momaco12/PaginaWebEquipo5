@@ -37,7 +37,7 @@ export default function AreasPage() {
   }
 
   return (
-    <div className="h-full overflow-auto p-6">
+    <div className="h-full overflow-auto bg-slate-50/50 p-6 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Áreas de cultivo</h1>
         <p className="mt-1 text-sm text-slate-500">{areas.length} áreas registradas</p>
