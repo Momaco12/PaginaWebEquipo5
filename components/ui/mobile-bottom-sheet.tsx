@@ -14,6 +14,7 @@ interface MobileBottomSheetProps {
   peekContent: React.ReactNode;
   children: React.ReactNode;
   bottomOffset?: number;
+  onSnapChange?: (snap: SnapState) => void;
 }
 
 export function MobileBottomSheet({
@@ -22,6 +23,7 @@ export function MobileBottomSheet({
   peekContent,
   children,
   bottomOffset = TAB_BAR_HEIGHT,
+  onSnapChange,
 }: MobileBottomSheetProps) {
   const [snap, setSnap] = useState<SnapState>("closed");
   const [dragOffset, setDragOffset] = useState(0);
@@ -34,6 +36,30 @@ export function MobileBottomSheet({
   useEffect(() => {
     setSnap(isOpen ? "peek" : "closed");
   }, [isOpen]);
+
+  // Notify parent whenever snap state changes
+  useEffect(() => {
+    onSnapChange?.(snap);
+  }, [snap, onSnapChange]);
+
+  // Native non-passive listeners on the sheet root:
+  // - touchstart stopPropagation: MapLibre never sees touches that start on the sheet
+  // - touchmove preventDefault (non-passive): actually blocks browser pan during drags
+  //   (React's synthetic onTouchMove is passive and cannot call preventDefault)
+  useEffect(() => {
+    const el = sheetRef.current;
+    if (!el) return;
+    const onTouchStart = (e: TouchEvent) => e.stopPropagation();
+    const onTouchMove = (e: TouchEvent) => {
+      if (isDragging.current) e.preventDefault();
+    };
+    el.addEventListener("touchstart", onTouchStart);
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+    };
+  }, []);
 
   const snapToTranslate = useCallback((s: SnapState): number => {
     const sheetH = sheetRef.current?.offsetHeight ?? 500;

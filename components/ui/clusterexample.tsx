@@ -467,6 +467,7 @@ export function ClusterExample() {
   const [isLoading, setIsLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
+  const [mobileSnap, setMobileSnap] = useState<"closed" | "peek" | "expanded">("closed");
 
   // Detect mobile viewport
   useEffect(() => {
@@ -769,7 +770,10 @@ export function ClusterExample() {
   }
 
   return (
-    <div className="h-full w-full">
+    <div
+      className="h-full w-full"
+      style={isMobile && mobileSnap === "expanded" ? { pointerEvents: "none" } : undefined}
+    >
       <Map center={mapCenter} zoom={8} fadeDuration={0} theme="light">
         <MapClusterLayer<AreaProperties>
           data={data ?? { type: "FeatureCollection", features: [] }}
@@ -894,6 +898,7 @@ export function ClusterExample() {
               setIsMobileSheetOpen(false);
               setSelectedPoint(null);
             }}
+            onSnapChange={setMobileSnap}
             bottomOffset={TAB_BAR_HEIGHT + (alertAreas.length > 0 ? ALERT_STRIP_HEIGHT : 0)}
             peekContent={
               <div className="flex items-center gap-3">
