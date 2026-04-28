@@ -467,9 +467,9 @@ export const CalendarDatePicker = React.forwardRef<
                 <button
                   type="button"
                   onClick={() => setIsMobileOpen(false)}
-                  className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100"
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-white hover:bg-slate-700"
                 >
-                  <X className="h-5 w-5 text-slate-500" />
+                  <X className="h-5 w-5" />
                 </button>
               </div>
 

@@ -198,7 +198,7 @@ export function MobileBottomSheet({
               setSnap("closed");
               onClose();
             }}
-            className="ml-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200"
+            className="ml-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-800 text-white hover:bg-slate-700"
           >
             <X className="h-4 w-4" />
           </button>

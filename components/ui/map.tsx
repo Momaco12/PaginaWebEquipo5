@@ -583,7 +583,7 @@ function MarkerPopup({
         <button
           type="button"
           onClick={handleClose}
-          className="absolute top-1 right-1 z-10 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          className="absolute top-1 right-1 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-white transition hover:bg-slate-700"
           aria-label="Close popup"
         >
           <X className="h-4 w-4" />
@@ -1012,7 +1012,7 @@ function MapPopup({
         <button
           type="button"
           onClick={handleClose}
-          className="absolute top-1 right-1 z-10 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          className="absolute top-1 right-1 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-white transition hover:bg-slate-700"
           aria-label="Close popup"
         >
           <X className="h-4 w-4" />
