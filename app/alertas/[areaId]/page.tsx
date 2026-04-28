@@ -40,10 +40,10 @@ export default function AreaAlertasPage() {
   useEffect(() => {
     if (!areaId) return;
     Promise.all([
-      fetch(`http://localhost:8080/api/areas/${areaId}`, { cache: "no-store" })
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/areas/${areaId}`, { cache: "no-store" })
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null),
-      fetch(`http://localhost:8080/api/alerts/area/${encodeURIComponent(areaId)}`, { cache: "no-store" })
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/alerts/area/${encodeURIComponent(areaId)}`, { cache: "no-store" })
         .then((r) => (r.ok ? r.json() : []))
         .catch(() => []),
     ]).then(([areaData, alertData]) => {
@@ -73,7 +73,7 @@ export default function AreaAlertasPage() {
     const id = String(alertId);
     setMarkingIds((prev) => new Set(prev).add(id));
     try {
-      const res = await fetch(`http://localhost:8080/api/alerts/${encodeURIComponent(id)}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/alerts/${encodeURIComponent(id)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ atendido: true }),

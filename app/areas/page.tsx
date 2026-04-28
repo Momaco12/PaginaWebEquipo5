@@ -21,7 +21,7 @@ export default function AreasPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("http://localhost:8080/api/areas", { cache: "no-store" })
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/areas`, { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => setAreas(Array.isArray(data) ? data : []))
       .catch(() => setAreas([]))

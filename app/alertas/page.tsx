@@ -31,13 +31,13 @@ export default function AlertasPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("http://localhost:8080/api/areas", { cache: "no-store" })
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/areas`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : []))
       .catch(() => [])
       .then(async (raw: any[]) => {
         const alertsResults = await Promise.allSettled(
           raw.map((item) =>
-            fetch(`http://localhost:8080/api/alerts/area/${encodeURIComponent(item.id)}`, { cache: "no-store" })
+            fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/alerts/area/${encodeURIComponent(item.id)}`, { cache: "no-store" })
               .then((r) => (r.ok ? (r.json() as Promise<AlertDto[]>) : []))
               .catch(() => [] as AlertDto[])
           )

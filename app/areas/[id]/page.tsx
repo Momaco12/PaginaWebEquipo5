@@ -60,10 +60,10 @@ export default function AreaDetailPage() {
   useEffect(() => {
     if (!id) return;
     Promise.all([
-      fetch(`http://localhost:8080/api/areas/${id}`, { cache: "no-store" })
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/areas/${id}`, { cache: "no-store" })
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null),
-      fetch(`http://localhost:8080/api/alerts/area/${encodeURIComponent(id)}`, { cache: "no-store" })
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/alerts/area/${encodeURIComponent(id)}`, { cache: "no-store" })
         .then((r) => (r.ok ? r.json() : []))
         .catch(() => []),
     ]).then(([areaData, alertData]) => {
@@ -81,7 +81,7 @@ export default function AreaDetailPage() {
     const start = new Date(now.getTime() - PERIOD_MS[period]);
 
     fetch(
-      `http://localhost:8080/api/analytics/area/${id}?start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(now.toISOString())}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/api/analytics/area/${id}?start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(now.toISOString())}`,
       { signal: abort.signal, cache: "no-store" }
     )
       .then((r) => (r.ok ? r.json() : null))

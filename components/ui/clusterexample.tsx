@@ -500,7 +500,7 @@ export function ClusterExample() {
 
     const loadData = async () => {
       try {
-        const response = await fetch("http://localhost:8080/api/areas", { cache: "no-store" });
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/areas`, { cache: "no-store" });
         if (!response.ok) {
           throw new Error(`Request failed with status ${response.status}`);
         }
@@ -508,7 +508,7 @@ export function ClusterExample() {
 
         const alertsResults = await Promise.allSettled(
           raw.map((item: any) =>
-            fetch(`http://localhost:8080/api/alerts/area/${encodeURIComponent(item.id)}`, { cache: "no-store" })
+            fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/alerts/area/${encodeURIComponent(item.id)}`, { cache: "no-store" })
               .then((r) => (r.ok ? (r.json() as Promise<AlertDto[]>) : []))
               .catch(() => [] as AlertDto[])
           )
@@ -678,7 +678,7 @@ export function ClusterExample() {
     const startStr = start.toISOString();
     const endStr = end.toISOString();
 
-    fetch(`http://localhost:8080/api/analytics/area/${id}?start=${encodeURIComponent(startStr)}&end=${encodeURIComponent(endStr)}`, {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/analytics/area/${id}?start=${encodeURIComponent(startStr)}&end=${encodeURIComponent(endStr)}`, {
       signal: abortController.signal,
       cache: "no-store",
     })
@@ -716,7 +716,7 @@ export function ClusterExample() {
 
     const abortController = new AbortController();
 
-    fetch(`http://localhost:8080/api/alerts/area/${encodeURIComponent(id)}`, {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/alerts/area/${encodeURIComponent(id)}`, {
       signal: abortController.signal,
       cache: "no-store",
     })
@@ -739,7 +739,7 @@ export function ClusterExample() {
 
   const handleMarkAtendido = async (alertId: string): Promise<void> => {
     const id = String(alertId);
-    const res = await fetch(`http://localhost:8080/api/alerts/${encodeURIComponent(id)}`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/alerts/${encodeURIComponent(id)}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ atendido: true }),
@@ -774,7 +774,7 @@ export function ClusterExample() {
               const id = feature.properties.id;
               if (id == null) return;
 
-              const response = await fetch(`http://localhost:8080/api/areas/${id}`, { cache: "no-store" });
+              const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/areas/${id}`, { cache: "no-store" });
               if (!response.ok) return;
               const apiFeature = (await response.json()) as GeoJSON.Feature<GeoJSON.Geometry, AreaProperties>;
               const apiCoords =
