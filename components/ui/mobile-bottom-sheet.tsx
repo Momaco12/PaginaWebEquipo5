@@ -54,7 +54,9 @@ export function MobileBottomSheet({
   const moveDrag = (clientY: number) => {
     if (!isDragging.current) return;
     const delta = clientY - startYRef.current;
-    setDragOffset(Math.max(-20, delta));
+    // Cap upward travel so the sheet can reach expanded (translateY=0) but not overshoot
+    const startBase = snapToTranslate(startSnapRef.current);
+    setDragOffset(Math.max(-startBase, delta));
   };
 
   const endDrag = () => {
