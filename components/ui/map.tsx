@@ -1293,7 +1293,7 @@ function MapClusterLayer<
           "#f59e0b",
           pointColor,
         ],
-        "circle-radius": 5,
+        "circle-radius": 10,
         "circle-stroke-width": 2,
         "circle-stroke-color": "#fff",
       },
