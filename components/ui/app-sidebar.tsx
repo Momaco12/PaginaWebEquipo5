@@ -10,11 +10,21 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
-import { Home, LayoutGrid, Map, Settings, Bell, SlidersHorizontal } from "lucide-react"
+import { Home, LayoutGrid, Map, Settings, Bell, SlidersHorizontal, LogOut, User } from "lucide-react"
 import Link from "next/link"
 import { AdminOnly } from "@/components/auth/UserContext"
+import { useUser } from "@/components/auth/UserContext"
+import { useRouter } from "next/navigation"
 
 export function AppSidebar() {
+  const { user, logout } = useUser();
+  const router = useRouter();
+
+  const handleLogout = () => {
+    logout();
+    router.replace('/Inicio_sesion');
+  };
+
   return (
     <div className="hidden md:block">
     <Sidebar collapsible="icon">
@@ -98,8 +108,32 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter>
-        <div className="text-xs text-muted-foreground px-2 py-1">
-          {new Date().getFullYear()} - Equipo 5
+        <div className="border-t border-sidebar-border p-2">
+          {user && (
+            <div className="flex items-center gap-3 mb-3 px-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground">
+                <User size={16} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-sidebar-foreground truncate">
+                  {user.nombreCompleto}
+                </p>
+                <p className="text-xs text-sidebar-foreground/70">
+                  {user.rol === 'ADMINISTRADOR' ? 'Administrador' : 'Lector'}
+                </p>
+              </div>
+            </div>
+          )}
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+          >
+            <LogOut size={16} />
+            <span>Cerrar sesión</span>
+          </button>
+          <div className="mt-3 px-2 text-xs text-sidebar-foreground/50 text-center">
+            {new Date().getFullYear()} - Equipo 5
+          </div>
         </div>
       </SidebarFooter>
     </Sidebar>

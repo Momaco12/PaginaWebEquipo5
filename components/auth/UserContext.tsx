@@ -16,6 +16,7 @@ interface UserContextType {
   setUser: (user: User | null) => void;
   isAdmin: boolean;
   isLoading: boolean;
+  logout: () => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -47,11 +48,20 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const logout = () => {
+    // Clear user data
+    updateUser(null);
+    // Clear auth token
+    import('@/lib/auth').then(({ logout }) => logout());
+    // Redirect will be handled by the component using this
+  };
+
   const value = {
     user,
     setUser: updateUser,
     isAdmin: user?.rol === 'ADMINISTRADOR',
     isLoading,
+    logout,
   };
 
   return (
@@ -70,6 +80,7 @@ export function useUser() {
       setUser: () => {},
       isAdmin: false,
       isLoading: true,
+      logout: () => {},
     };
   }
   return context;
