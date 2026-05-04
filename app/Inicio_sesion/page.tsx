@@ -128,13 +128,6 @@ const LoginPage: React.FC = () => {
                         <button type="submit" className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
                             Iniciar sesión
                         </button>
-                        <button
-                            type="button"
-                            onClick={() => { setEmail('admin@itesm.mx'); setPassword('pass123'); }}
-                            className="w-full rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted"
-                        >
-                            Llenar como Admin
-                        </button>
                     </form>
                 )}
 
