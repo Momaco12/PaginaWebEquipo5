@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle, SlidersHorizontal } from "lucide-react";
 import { FIELD_CONFIG, FieldKey } from "@/components/ui/telemetry-chart";
+import { useUser } from "@/components/auth/UserContext";
+import { useRouter } from "next/navigation";
 
 interface Area {
   id: string;
@@ -28,6 +30,15 @@ function defaultLimits(): Limits {
 }
 
 export default function LimitesConfiguracionPage() {
+  const { isAdmin, isLoading } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !isAdmin) {
+      router.replace('/alertas');
+    }
+  }, [isAdmin, isLoading, router]);
+
   const [areas, setAreas] = useState<Area[]>([]);
   const [selectedAreaId, setSelectedAreaId] = useState<string>("");
   const [limits, setLimits] = useState<Limits>(defaultLimits);
@@ -126,6 +137,25 @@ export default function LimitesConfiguracionPage() {
       setSaving(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center text-slate-500">
+        Cargando…
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="flex h-full items-center justify-center text-slate-500">
+        <div className="text-center">
+          <h1 className="text-xl font-semibold text-slate-900 mb-2">Acceso denegado</h1>
+          <p className="text-sm text-slate-500">No tienes permisos para acceder a esta página.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full overflow-auto bg-slate-50/50 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">

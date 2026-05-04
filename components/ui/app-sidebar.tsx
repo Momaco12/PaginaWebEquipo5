@@ -10,8 +10,9 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
-import { Home, LayoutGrid, Map, Settings, Bell } from "lucide-react"
+import { Home, LayoutGrid, Map, Settings, Bell, SlidersHorizontal } from "lucide-react"
 import Link from "next/link"
+import { AdminOnly } from "@/components/auth/UserContext"
 
 export function AppSidebar() {
   return (
@@ -69,6 +70,18 @@ export function AppSidebar() {
               </Link>
             </SidebarMenuItem>
 
+            {/* CONFIGURACIÓN DE LÍMITES - Only for Admin */}
+            <AdminOnly>
+              <SidebarMenuItem>
+                <Link href="/limitesconfiguracion">
+                  <SidebarMenuButton tooltip="Configuración de límites">
+                    <SlidersHorizontal />
+                    <span>Configuración de límites</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+            </AdminOnly>
+
             {/* Settings - Link global a la página de ajustes */}
             <SidebarMenuItem>
               <Link href="/settings">
@@ -92,4 +105,4 @@ export function AppSidebar() {
     </Sidebar>
     </div>
   )
-}
+}

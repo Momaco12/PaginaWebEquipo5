@@ -2,22 +2,34 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, LayoutGrid, Map, Settings } from "lucide-react";
+import { Bell, LayoutGrid, Map, Settings, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAlertCount } from "@/components/ui/alert-count-provider";
+import { useUser } from "@/components/auth/UserContext";
 
 export const TAB_BAR_HEIGHT = 80; // px — used by the bottom sheet to sit above this
-
-const tabs = [
-  { href: "/", icon: Map, label: "Mapa" },
-  { href: "/areas", icon: LayoutGrid, label: "Áreas" },
-  { href: "/alertas", icon: Bell, label: "Alertas" },
-  { href: "/settings", icon: Settings, label: "Ajustes" },
-] as const;
 
 export function MobileTabBar() {
   const pathname = usePathname();
   const { totalAlertCount } = useAlertCount();
+  const { isAdmin } = useUser();
+
+  // Base tabs
+  const baseTabs = [
+    { href: "/", icon: Map, label: "Mapa" },
+    { href: "/areas", icon: LayoutGrid, label: "Áreas" },
+    { href: "/alertas", icon: Bell, label: "Alertas" },
+  ];
+
+  // Add limits config for admins
+  const adminTabs = isAdmin ? [
+    ...baseTabs,
+    { href: "/limitesconfiguracion", icon: SlidersHorizontal, label: "Límites" },
+    { href: "/settings", icon: Settings, label: "Ajustes" },
+  ] : [
+    ...baseTabs,
+    { href: "/settings", icon: Settings, label: "Ajustes" },
+  ];
 
   // Hide on pages that don't need app navigation (auth pages, etc.)
   const hiddenRoutes = ["/Inicio_sesion", "/login"];
@@ -29,7 +41,7 @@ export function MobileTabBar() {
       style={{ height: TAB_BAR_HEIGHT, paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <div className="flex items-center justify-around h-full px-2">
-        {tabs.map(({ href, icon: Icon, label }) => {
+        {adminTabs.map(({ href, icon: Icon, label }) => {
           const isActive = pathname === href;
           const isAlerts = href === "/alertas";
 

@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthGuard } from "@/components/auth/AuthGuard";
+import { UserProvider } from "@/components/auth/UserContext";
 import { MobileTabBar } from "@/components/ui/mobile-tab-bar";
 import { AlertCountProvider } from "@/components/ui/alert-count-provider";
 
@@ -28,9 +29,11 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AlertCountProvider>
-          <AuthGuard>
-            {children}
-          </AuthGuard>
+          <UserProvider>
+            <AuthGuard>
+              {children}
+            </AuthGuard>
+          </UserProvider>
           <MobileTabBar />
         </AlertCountProvider>
       </body>

@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { login } from '@/lib/auth';
+import { useUser } from '@/components/auth/UserContext';
 
 const LoginPage: React.FC = () => {
     const [tab, setTab] = useState<'login' | 'register'>('login');
@@ -11,6 +12,7 @@ const LoginPage: React.FC = () => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const router = useRouter();
+    const { setUser } = useUser();
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -35,7 +37,8 @@ const LoginPage: React.FC = () => {
             }
             const user = await res.json();
             const token = btoa(`${user.email}:${password}`);
-            login(token);
+            login(token, user);
+            setUser(user);
             router.replace('/');
         } catch (err) {
             setError('Error al conectar con el servidor.');
