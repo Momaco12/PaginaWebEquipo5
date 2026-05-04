@@ -64,7 +64,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
 export function useUser() {
   const context = useContext(UserContext);
   if (context === undefined) {
-    throw new Error('useUser must be used within a UserProvider');
+    // During SSR/static generation, return a safe default
+    return {
+      user: null,
+      setUser: () => {},
+      isAdmin: false,
+      isLoading: true,
+    };
   }
   return context;
 }
@@ -73,8 +79,9 @@ export function useUser() {
 export function AdminOnly({ children, fallback = null }: { children: ReactNode; fallback?: ReactNode }) {
   const { isAdmin, isLoading } = useUser();
 
+  // During SSR/static generation, don't render admin-only content
   if (isLoading) {
-    return <div className="animate-pulse bg-slate-200 rounded h-4 w-20"></div>;
+    return null;
   }
 
   return isAdmin ? <>{children}</> : <>{fallback}</>;
