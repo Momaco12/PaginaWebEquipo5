@@ -73,6 +73,43 @@ function getAlertFieldConfig(alert: AlertDto) {
   return FIELD_CONFIG.find((f) => f.key === alert.campo) ?? null;
 }
 
+/**
+ * Maps API response (camelCase) to component AreaProperties (snake_case)
+ * Handles the conversion from Spring backend format to expected component format
+ */
+function mapAreaApiToProperties(rawArea: any): AreaProperties {
+  return {
+    // Direct mappings (already snake_case or correct format)
+    id: rawArea.id,
+    latitud: rawArea.latitud,
+    longitud: rawArea.longitud,
+    last_updated: rawArea.last_updated,
+    
+    // camelCase → snake_case mappings
+    name_area: rawArea.name ?? rawArea.name_area,
+    tipo_cultivo: rawArea.cropType ?? rawArea.tipo_cultivo,
+    tipo_tierra: rawArea.soilType ?? rawArea.tipo_tierra,
+    superficie_ha: rawArea.areaHa ?? rawArea.superficie_ha,
+    capacidad_campo: rawArea.fieldCapacity ?? rawArea.capacidad_campo,
+    punto_marchitez: rawArea.wiltingPoint ?? rawArea.punto_marchitez,
+    
+    // Preserve any additional fields
+    cultivo: rawArea.cultivo,
+    fecha_hora: rawArea.fecha_hora,
+    humedad_suelo: rawArea.humedad_suelo,
+    temperatura: rawArea.temperatura,
+    radiacion_solar: rawArea.radiacion_solar,
+    evapotranspiracion: rawArea.evapotranspiracion,
+    consumo_agua: rawArea.consumo_agua,
+    conductividad_suelo: rawArea.conductividad_suelo,
+    desarrollo_vegetativo: rawArea.desarrollo_vegetativo,
+    
+    // Alert data (will be overwritten by component logic)
+    alerts: rawArea.alerts ?? [],
+    alertCount: rawArea.alertCount ?? 0,
+  };
+}
+
 interface AreaProperties {
   name_area?: string;
   cultivo?: string;
@@ -542,6 +579,7 @@ export function ClusterExample() {
 
         const features = raw.map((item: any) => {
           const alerts: AlertDto[] = alertsByArea[item.id] ?? [];
+          const mappedProperties = mapAreaApiToProperties(item);
           return {
             type: "Feature" as const,
             id: item.id,
@@ -550,7 +588,7 @@ export function ClusterExample() {
               coordinates: [item.longitud, item.latitud] as [number, number],
             },
             properties: {
-              ...item,
+              ...mappedProperties,
               alerts,
               alertCount: alerts.filter((a) => !a.atendido).length,
             },
@@ -804,22 +842,20 @@ export function ClusterExample() {
 
               const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/areas/${id}`, { cache: "no-store" });
               if (!response.ok) return;
-              const apiFeature = (await response.json()) as GeoJSON.Feature<GeoJSON.Geometry, AreaProperties>;
+              const apiData = await response.json();
+              const mappedProperties = mapAreaApiToProperties(apiData);
               const apiCoords =
-                apiFeature.geometry?.type === "Point" &&
-                Array.isArray(apiFeature.geometry.coordinates) &&
-                typeof apiFeature.geometry.coordinates[0] === "number" &&
-                typeof apiFeature.geometry.coordinates[1] === "number"
-                  ? (apiFeature.geometry.coordinates as [number, number])
-                  : coordinates;
+                Array.isArray(apiData.latitud) && Array.isArray(apiData.longitud)
+                  ? [apiData.longitud, apiData.latitud] as [number, number]
+                  : [apiData.longitud ?? coordinates[0], apiData.latitud ?? coordinates[1]] as [number, number];
               setSelectedPoint({
-                id: apiFeature.id ?? feature.id,
+                id: apiData.id ?? feature.id,
                 coordinates: apiCoords,
                 properties: {
                   ...feature.properties,
-                  ...(apiFeature.properties ?? {}),
+                  ...mappedProperties,
                 },
-                history: (apiFeature.properties as any)?.history ?? undefined,
+                history: apiData.history ?? undefined,
               });
             } catch {
               // Keep current selection if the request fails
